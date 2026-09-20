@@ -1,8 +1,9 @@
 # Release-candidate audit — OpsPilot V2
 
 Written before any RC hardening change, from reading the repository as it stands after V2 Phase 5.
-Every statement below is what the code does today; the "risk" entries are what this phase must
-test or fix. Findings are re-graded in the RC1 report once each has been exercised.
+Every statement below is what the code did at that point; the "risk" entries are what this phase
+tested or fixed. **Outcome per finding is in §11 at the end**; the changes themselves are recorded
+in [RC1-CHANGES.md](RC1-CHANGES.md).
 
 ## 1. Architecture as it is
 
@@ -138,3 +139,32 @@ name suffix and inspection; demo seed refusing production, non-local hosts and n
 
 No schema migration is planned. If measurement in step 5 justifies an index, it will be documented
 here before it is written.
+
+## 11. Outcome per finding (after the phase)
+
+| Finding | Result |
+| --- | --- |
+| O1 SSE blocks shutdown | Fixed (RC1-CHANGES #6): exit 0 in 44 ms with an open stream |
+| O2 session expiry discards work | Fixed (#4): in-place re-authentication, e2e-tested |
+| O3 network / non-JSON errors | Fixed (#5), e2e-tested |
+| O4 database outage behaviour | Tested: readiness 503, data requests now 503 with `Retry-After` (#7), automatic recovery |
+| O5 `start.bat` generic failure | Fixed (#15): exit codes 10/11/12 explained; configuration validated before start |
+| O6 backup credential in argv | Fixed (#11) |
+| O7 multi-replica / proxy notes | Documented: DEPLOYMENT.md reverse-proxy table, OPERATIONS-RUNBOOK §9 |
+| D1 Docker stack unverified | Still unverified here (no Docker in the sandbox); production-mode server, preflight and entrypoint logic verified outside a container; rows 15–17 of the release checklist are for the release host |
+| D2 read-only root FS | Inspected only; multer uses memory storage, writes go to `/app/uploads` only |
+| D3 entrypoint migrates on bare `docker run` | Acceptable; preflight added before it (#3) |
+| D4 proxy requirements | Documented (see O7) |
+| DA1 CSV formula injection | Fixed (#2), tested |
+| DA2 restore only tested by file copy | File-level path run end to end (backup → change → restore → verified); `pg_restore` path inspected; documented in BACKUP-RESTORE.md |
+| DA3 orphan upload files | Left, documented |
+| DA4 concurrency | Tested (#1 fixed a real race in approvals; version conflict, resolve-vs-reply, board move, bulk all hold) |
+| DA5 timezone rule | Fixed for calendar dates (#12); rule written in DESIGN-SYSTEM/runbook: timestamps in the viewer's zone, calendar dates in UTC, server computes windows from its clock in UTC |
+| PF1 legacy `/dashboard` reads all tickets | Not on the UI path; rate-limited (#14) and documented as legacy |
+| PF2 SLA filter in memory | Measured: 27 ms at 310 active tickets; acceptable, unchanged |
+| PF3 board 500 cap | Documented |
+| PF4 analytics/reports | Fixed (#8, #9): 4.36 s → 0.58 s; JSON rows capped, CSV complete |
+| PF5 search | Measured 10–20 ms at 10k tickets / 1k articles; rate-limited |
+| PF6 operations summary | Fixed (#8): 0.53 s → 0.06 s |
+| PF7 bundle | Measured with a source map; zod removed from the client (#10): 580 → 502 kB |
+| New during the phase | Approval decision race (P1, #1); SlaPolicy reference rows must survive a test reset (#16); modal dialogs lacked a focus trap (fixed with #4) |

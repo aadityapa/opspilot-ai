@@ -174,6 +174,24 @@ function clearStaleLocks({ quiet }) {
  * terminal — that one is adopted instead of starting a second server on the same data directory,
  * and `stop()` becomes a no-op so this process does not shut down a database it did not start.
  */
+/** Polls until PostgreSQL actually accepts a TCP connection, or the deadline passes. */
+async function waitForPort(port, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const open = await new Promise((resolve) => {
+      const socket = createConnection({ host: '127.0.0.1', port });
+      const done = (answer) => { socket.destroy(); resolve(answer); };
+      socket.setTimeout(700);
+      socket.once('connect', () => done(true));
+      socket.once('timeout', () => done(false));
+      socket.once('error', () => done(false));
+    });
+    if (open) return true;
+    if (Date.now() > deadline) return false;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+}
+
 export async function startLocalDatabase({ quiet = false } = {}) {
   if (await portAnswering()) {
     if (!quiet) console.log(`A database is already running on 127.0.0.1:${PORT} — using it.`);
@@ -199,6 +217,12 @@ export async function startLocalDatabase({ quiet = false } = {}) {
     password: PASSWORD,
     port: PORT,
     persistent: true,
+    // Force UTF-8 on a new cluster. Without this, initdb takes the encoding from the operating
+    // system's locale — on a typical Windows install that is WIN1252, which cannot store the
+    // characters the application actually writes (an audit detail reads "status: OPEN → RESOLVED"),
+    // so ticket updates fail with SQLSTATE 22P05 at runtime. The C locale keeps the choice
+    // deterministic on every machine; collation is byte order, which is fine for a local database.
+    initdbFlags: ['--encoding=UTF8', '--locale=C'],
     onLog: remember,
     onError: remember,
   });
@@ -213,6 +237,16 @@ export async function startLocalDatabase({ quiet = false } = {}) {
   } catch (error) {
     const detail = recent.length ? `\n    ${recent.join('\n    ')}` : '';
     throw new Error(`${error?.message ?? 'PostgreSQL would not start.'}${detail}`);
+  }
+
+  // The library reports success as soon as it has spawned the server, which is not the same as the
+  // server accepting connections: after an unclean shutdown the postmaster can exit during crash
+  // recovery and leave "running" on the screen with nothing listening. Confirm the port really
+  // answers before saying so.
+  const accepting = await waitForPort(PORT, 30_000);
+  if (!accepting) {
+    const detail = recent.length ? `\n    ${recent.join('\n    ')}` : '';
+    throw new Error(`PostgreSQL was started but nothing is accepting connections on 127.0.0.1:${PORT}.${detail}\n    If the machine stopped suddenly, the cluster may need recovery: run\n      node_modules\\@embedded-postgres\\windows-x64\\native\\bin\\pg_ctl.exe -D ".local-db\\data" -l recovery.log start\n    read recovery.log, then stop it again with the same tool and -m fast stop.`);
   }
 
   if (!quiet) console.log(`Local PostgreSQL is running on 127.0.0.1:${PORT} (data in .local-db/).`);

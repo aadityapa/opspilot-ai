@@ -12,9 +12,11 @@
 import 'dotenv/config';
 import { existsSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+// These run real executables (tar.exe, pg_dump.exe, docker.exe), never a shell: with `shell: true`
+// Windows concatenates the arguments without quoting, so any path containing a space — the
+// documented layout here is "…\AI IT Helpdesk\opspilot-ai" — is split and the command fails.
 import pg from 'pg';
 
-const isWindows = process.platform === 'win32';
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
 const confirm = args.includes('--confirm');
@@ -33,7 +35,7 @@ const parsed = new URL(url);
 const urlWithoutPassword = (() => { const u = new URL(url); u.password = ''; return u.toString(); })();
 const pgEnv = { ...process.env, ...(parsed.password ? { PGPASSWORD: decodeURIComponent(parsed.password) } : {}) };
 const database = parsed.pathname.slice(1);
-const has = (cmd) => spawnSync(cmd, ['--version'], { encoding: 'utf8', shell: isWindows, windowsHide: true }).status === 0;
+const has = (cmd) => spawnSync(cmd, ['--version'], { encoding: 'utf8', windowsHide: true }).status === 0;
 
 async function describeTarget() {
   const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 5000 });
@@ -68,7 +70,7 @@ if (file.endsWith('.tar')) {
     process.exit(1);
   }
   rmSync('.local-db/data', { recursive: true, force: true });
-  const r = spawnSync('tar', ['-xf', file, '-C', '.local-db'], { stdio: 'inherit', shell: isWindows, windowsHide: true });
+  const r = spawnSync('tar', ['-xf', file, '-C', '.local-db'], { stdio: 'inherit', windowsHide: true });
   if (r.status !== 0) process.exit(r.status ?? 1);
   console.log('\n  ✓ Restored. Start the database with npm run db:local (or npm run dev:local).\n');
   process.exit(0);
@@ -81,12 +83,12 @@ if (!target.reachable) {
 const restoreArgs = ['--clean', '--if-exists', '--no-owner', '--no-privileges', '--single-transaction'];
 if (has('pg_restore')) {
   console.log('  Restoring with pg_restore…');
-  const r = spawnSync('pg_restore', [...restoreArgs, '--dbname', urlWithoutPassword, file], { stdio: 'inherit', shell: isWindows, windowsHide: true, env: pgEnv });
+  const r = spawnSync('pg_restore', [...restoreArgs, '--dbname', urlWithoutPassword, file], { stdio: 'inherit', windowsHide: true, env: pgEnv });
   if (r.status !== 0) process.exit(r.status ?? 1);
 } else if (has('docker')) {
   console.log('  Restoring with pg_restore inside the db container…');
   const { readFileSync } = await import('node:fs');
-  const r = spawnSync('docker', ['compose', 'exec', '-T', 'db', 'pg_restore', ...restoreArgs, '-U', parsed.username || 'opspilot', '--dbname', database], { input: readFileSync(file), stdio: ['pipe', 'inherit', 'inherit'], shell: isWindows, windowsHide: true });
+  const r = spawnSync('docker', ['compose', 'exec', '-T', 'db', 'pg_restore', ...restoreArgs, '-U', parsed.username || 'opspilot', '--dbname', database], { input: readFileSync(file), stdio: ['pipe', 'inherit', 'inherit'], windowsHide: true });
   if (r.status !== 0) process.exit(r.status ?? 1);
 } else {
   console.error('  ✗ Neither pg_restore nor docker is available.');

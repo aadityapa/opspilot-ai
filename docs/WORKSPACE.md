@@ -41,6 +41,9 @@ event for the batch.
 
 Employees see the board too, scoped to their own tickets, read-only.
 
+The board reads the first 500 tickets in the selected scope (by rank, then creation) and has no
+pagination; a queue larger than that is worked from the Service Desk list, which is paginated.
+
 ## Service catalog
 
 Administrators publish **catalog items** under *Workspace → Service catalog*: a name, description,

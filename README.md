@@ -323,11 +323,17 @@ npm.cmd run eval:real
 
 A passing mock run says the plumbing is correct. It says nothing about a real model's answer quality. See [Validation results](docs/VALIDATION.md) for measured counts.
 
-Most recent full run on the final code (Node 24, embedded PostgreSQL 16): Vitest **338 passed / 0
-failed** across 20 files; Playwright **32 passed / 0 failed**; `npm audit` 0 vulnerabilities; the
-client bundle 580 kB JS (160.6 kB gzip) with staff and administration routes lazy-loaded, 190 kB
-CSS (31.7 kB gzip). axe-core (WCAG 2.2 AA rule sets) reports 0 violations across the 26 Phase 5
-page states listed in [docs/REDESIGN-CHANGELOG.md](docs/REDESIGN-CHANGELOG.md).
+Most recent full run on the release-candidate code (v2.0.0-rc1; Node 24.13, embedded PostgreSQL
+18): Vitest **362 passed / 0 failed** across 22 files; Playwright **35 passed / 0 failed**, three
+consecutive full runs from a freshly reset database; `npm audit` 0 vulnerabilities; the client
+bundle 502 kB JS (138.1 kB gzip) with staff and administration routes lazy-loaded, 190 kB CSS
+(31.7 kB gzip). axe-core (WCAG 2.2 AA rule sets) reports 0 violations across the 26 Phase 5 page
+states and the 18 RC states (including the session-expired dialog and the offline error). The
+release-candidate hardening — audit, findings, fixes, what was and was not verified — is in
+[docs/RC-AUDIT.md](docs/RC-AUDIT.md), [docs/RC1-CHANGES.md](docs/RC1-CHANGES.md) and
+[docs/RELEASE-CHECKLIST.md](docs/RELEASE-CHECKLIST.md); operating it is
+[docs/OPERATIONS-RUNBOOK.md](docs/OPERATIONS-RUNBOOK.md), [docs/BACKUP-RESTORE.md](docs/BACKUP-RESTORE.md)
+and [docs/SECURITY.md](docs/SECURITY.md); the sales demo is [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
 
 The GitHub Actions workflow runs locked install, generation, build, integration tests, Chromium tests, and dependency audit using PostgreSQL. Push this repository root to GitHub to run it; the workflow has not been executed on GitHub in this session.
 

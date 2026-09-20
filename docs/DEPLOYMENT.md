@@ -54,7 +54,7 @@ Sign in at `https://<DOMAIN>`; you are asked to replace the temporary password a
 | --- | --- | --- |
 | `caddy` | TLS termination, HSTS, reverse proxy, adds `X-Request-Id` | 80, 443 on the host |
 | `app` | The image, `NODE_ENV=production`, read-only filesystem, no capabilities, 512 MB limit | none; `backend` + `edge` networks |
-| `migrate` | Same image, runs `prisma migrate deploy` once, exits | none |
+| `migrate` | Same image, runs the database preflight then `prisma migrate deploy` once, exits (exit 10 if the database is missing, unreachable or refuses the password — a missing database is never created) | none |
 | `db` | `pgvector/pgvector:pg18`, named volume | none; `backend` network is internal (no internet) |
 
 `app` waits for `migrate` to complete and starts with `SKIP_MIGRATIONS=1`, so a replica never runs
@@ -62,6 +62,22 @@ DDL. Health is `GET /api/health/ready`; Caddy only starts routing once it passes
 
 Caddy refuses `/metrics` at the edge. Scrape it from inside the `backend` network with the bearer
 token in `METRICS_TOKEN` — see [OPERATIONS.md](OPERATIONS.md).
+
+## Reverse proxy expectations
+
+The shipped Caddyfile is one working example; any proxy will do if it meets these:
+
+| Requirement | Why | Caddy | nginx equivalent |
+| --- | --- | --- | --- |
+| HTTPS at the edge, `X-Forwarded-Proto: https` passed through | cookies are `Secure` + `__Host-`; the API trusts exactly one proxy hop (`trust proxy 1`) for the client address used by rate limits and audit | default `reverse_proxy` | `proxy_set_header X-Forwarded-Proto $scheme; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` |
+| **Do not buffer** `text/event-stream` responses; no idle timeout below 60 s on `/api/events/stream` | live updates are one long-lived response per tab with a heartbeat comment every 25 s; a buffering proxy delivers nothing and the footer shows "Live updates reconnecting…" forever | streams by default (`flush_interval -1` if you set one) | `proxy_buffering off; proxy_cache off; proxy_read_timeout 1h; proxy_http_version 1.1; proxy_set_header Connection "";` on that location |
+| Request body limit ≥ `ATTACHMENT_MAX_MB` + 1 MB on `/api/tickets/*/attachments`; JSON is 32 kB elsewhere | uploads are multipart; the API enforces its own limit too | 100 MB default | `client_max_body_size 12m;` |
+| Pass `X-Request-Id` (or let the API generate one) | correlation between proxy, API log and the id shown to users | `header_up X-Request-Id {http.request.uuid}` | `proxy_set_header X-Request-Id $request_id;` |
+| Block `/metrics` at the edge | Prometheus text is for the internal network | `respond @metrics 404` | `location = /metrics { return 404; }` |
+| Timeouts: ordinary requests finish in well under 5 s (10k-ticket analytics ≤ 1 s); CSV exports stream | nothing needs a long timeout except the SSE path | default | default |
+
+One API replica is the supported shape. Two work, but live updates and rate limits are per
+process (see OPERATIONS-RUNBOOK §9).
 
 ## Attachments
 
@@ -90,6 +106,17 @@ The application can be rolled back to a previous image tag (`IMAGE_TAG=<previous
 migrations are forward-only. Every migration in this repository is additive — new tables, nullable
 columns, defaults — so an older application version runs against a newer schema. Restoring a
 database backup is the rollback for data, not for schema.
+
+## What was and was not verified for RC1
+
+Docker was not available in the environment used for the RC1 hardening pass. Verified there: the
+image's runtime pieces run outside a container — the built server in `NODE_ENV=production` mode
+(static serving, SPA fallback, helmet headers including HSTS, `Cache-Control: no-store` on the API,
+readiness/liveness, origin rejection, demo accounts refused, `/metrics` 404 without a token,
+SIGTERM → exit 0), the preflight (`dist/server/preflight.js`) with every failure category, and the
+migration behaviour it protects. Inspected, not run: the multi-stage build, the read-only root
+filesystem with the `uploads` volume, the `migrate` job ordering, Caddy. Rows 15–17 of
+[RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) must be run on the release host before the tag.
 
 ## What is deliberately not here
 

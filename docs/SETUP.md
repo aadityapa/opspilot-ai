@@ -108,6 +108,12 @@ Customer Success — so the directory, departments, approvals and asset ownershi
 point at. They exist to be looked at, not signed in as: each one is created with a random password
 nobody is given. These four accounts are the only ones that can sign in.
 
+The local database is created as **UTF-8** with the C locale. That matters on Windows: left to the
+operating system's locale, PostgreSQL would be created as WIN1252, which cannot store the characters
+the application writes (an audit line reads `status: OPEN → RESOLVED`) and ticket updates would fail
+with HTTP 500. If you point `DATABASE_URL` at a database of your own, create it with
+`ENCODING 'UTF8'` — startup refuses anything else and says so.
+
 Browse **localhost**, not `127.0.0.1`. Every mutation requires an exact `Origin` match against
 `APP_ORIGIN`, so the two addresses are not interchangeable and mixing them gives HTTP 403.
 

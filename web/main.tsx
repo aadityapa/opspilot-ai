@@ -52,14 +52,15 @@ const badge = (value: string) => (
 );
 /**
  * Sign in again without leaving the page. Nothing underneath is unmounted, so a half-written reply or
- * a filtered list survives. The email is fixed to the signed-in account; signing in as someone else
- * reloads the application so no state leaks between people.
+ * a filtered list survives. Closing the dialog (Escape, ×) keeps the page as it is — the next action
+ * simply asks again — while "Go to sign-in page" is the explicit way out. The email is fixed to the
+ * signed-in account; signing in as someone else reloads the application so no state leaks between people.
  */
-function SessionExpired({ email, onSignedIn, onLeave }: { email: string; onSignedIn: (r: AuthState) => void; onLeave: () => void }) {
+function SessionExpired({ email, onSignedIn, onLeave, onDismiss }: { email: string; onSignedIn: (r: AuthState) => void; onLeave: () => void; onDismiss: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
-    <Modal title="Your session has ended" onClose={onLeave}>
+    <Modal title="Your session has ended" onClose={onDismiss}>
       <form
         id="reauth-form"
         onSubmit={(e) => {
@@ -277,6 +278,7 @@ function App() {
             setRefresh((n) => n + 1);
           }}
           onLeave={() => { setExpired(false); setUser(null); setAuth(null); setCsrf(''); location.hash = '/'; }}
+          onDismiss={() => setExpired(false)}
         />
       )}
       <a

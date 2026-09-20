@@ -175,7 +175,7 @@ Every route below re-checks the caller's role and the specific record. When `AI_
 | Method | Path | Access | Notes |
 | --- | --- | --- | --- |
 | GET | `/analytics` | Staff | `?days=7..365&departmentId&type&priority` → `{window, headline, series, demand, sla, resolution, csat, team}`. `headline` carries six `Comparison {value, previous, delta, measured}` objects; `delta` is `null` when either period has no value. `series` is one row per day (`created, resolved, backlog, slaPercent|null, slaMeasured, csat|null, csatResponses, mttrMinutes|null, breaches`). `team` is alphabetical and carries no rank |
-| GET | `/reports/:kind` | Staff | `kind` ∈ `tickets, sla, resolution, csat, requests, departments, agents, assets`; same filters → `{kind, title, description, window, filters, summary:[{label,value}], columns:[{key,label,align?}], rows}`; `?format=csv` → `text/csv` attachment `opspilot-<kind>-<days>d-<date>.csv` (UTF-8 BOM, RFC 4180 quoting) containing exactly the filtered rows; unknown kinds 404 |
+| GET | `/reports/:kind` | Staff | `kind` ∈ `tickets, sla, resolution, csat, requests, departments, agents, assets`; same filters → `{kind, title, description, window, filters, summary:[{label,value}], columns:[{key,label,align?}], rows}`; `?format=csv` → `text/csv` attachment `opspilot-<kind>-<days>d-<date>.csv` (UTF-8 BOM, RFC 4180 quoting, formula-leading cells prefixed with `'`) containing exactly the filtered rows; unknown kinds 404. The JSON `rows` are capped at 2,000 (`truncated: true`, `total` is the real count); the CSV is never capped |
 
 ## Workspace (Phase 6)
 
@@ -235,5 +235,6 @@ Metric definitions are in the README. Every figure is computed from stored rows 
 | 404 | Record does not exist **or** the caller may not see it |
 | 409 | Stale `version`, disallowed status transition, duplicate unique value, or an invalid state change |
 | 413 | Request body over 32 kB |
-| 429 | Login or reset-request rate limit |
+| 429 | Rate limit: sign-in and reset requests; search (120/min); analytics, reports, audit export and the legacy dashboard (60/min); uploads (60/15 min) — per source address, with `RateLimit-*` headers |
 | 500 | Unexpected failure; the body carries only `requestId`, which matches the server log line |
+| 503 | The database is not reachable (`Retry-After: 5`); nothing was changed — retry. Also AI disabled |

@@ -1,6 +1,6 @@
 {
   "name": "opspilot-ai",
-  "version": "0.1.0",
+  "version": "2.0.0-rc.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -31,7 +31,9 @@
     "db:backup": "node scripts/backup.mjs",
     "db:restore": "node scripts/restore.mjs",
     "admin:create": "tsx server/cli/create-admin.ts",
-    "db:upgrade": "node scripts/upgrade-db.mjs"
+    "db:upgrade": "node scripts/upgrade-db.mjs",
+    "demo:reset": "tsx scripts/demo-reset.ts",
+    "perf:dataset": "tsx scripts/perf-dataset.ts"
   },
   "overrides": {
     "@prisma/config": {

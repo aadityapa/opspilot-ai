@@ -14,7 +14,18 @@
  */
 import pg from 'pg';
 
-export type Preflight = { ok: true; host: string; database: string; version: string } | { ok: false; host: string; database: string; reason: string };
+export type Preflight = { ok: true; host: string; database: string; version: string; encoding: string } | { ok: false; host: string; database: string; reason: string };
+
+/**
+ * OpsPilot stores UTF-8 text: audit details read "status: OPEN → RESOLVED", articles and replies
+ * carry dashes, quotes and any language someone types. A cluster created in a Windows OS locale is
+ * usually WIN1252, which cannot represent those characters — PostgreSQL then rejects the write with
+ * SQLSTATE 22P05 and the API answers 500 on ordinary ticket updates. Catch it at startup instead.
+ */
+export function encodingProblem(encoding: string): string | null {
+  if (/^utf-?8$/i.test(encoding.trim())) return null;
+  return `the database was created with the ${encoding} encoding, but OpsPilot stores UTF-8 text — ticket updates would fail. Re-create it as UTF-8 (see docs/OPERATIONS-RUNBOOK.md, "Database encoding"), or point DATABASE_URL at a UTF-8 database`;
+}
 
 export async function checkDatabase(url: string, timeoutMs = 5000): Promise<Preflight> {
   let host = '?';
@@ -29,8 +40,11 @@ export async function checkDatabase(url: string, timeoutMs = 5000): Promise<Pref
   const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: timeoutMs, statement_timeout: timeoutMs });
   try {
     await client.connect();
-    const r = await client.query('SELECT version() AS v');
-    return { ok: true, host, database, version: String(r.rows[0].v).split(' (')[0] };
+    const r = await client.query('SELECT version() AS v, current_setting(\'server_encoding\') AS enc');
+    const encoding = String(r.rows[0].enc);
+    const problem = encodingProblem(encoding);
+    if (problem) return { ok: false, host, database, reason: problem };
+    return { ok: true, host, database, version: String(r.rows[0].v).split(' (')[0], encoding };
   } catch (error) {
     const e = error as { code?: string; message?: string };
     const reason =
@@ -51,7 +65,8 @@ export async function waitForDatabase(url: string, attempts: number, intervalMs:
     last = await checkDatabase(url);
     say(last, i);
     if (last.ok) return last;
-    if (last.reason.includes('does not exist') || last.reason.includes('authentication failed')) return last; // waiting will not help
+    // Waiting cannot fix a missing database, a wrong password or a wrongly encoded cluster.
+    if (last.reason.includes('does not exist') || last.reason.includes('authentication failed') || last.reason.includes('encoding')) return last;
     if (i < attempts) await new Promise((r) => setTimeout(r, intervalMs));
   }
   return last;
@@ -59,8 +74,11 @@ export async function waitForDatabase(url: string, attempts: number, intervalMs:
 
 const isMain = process.argv[1] && /preflight\.(js|ts)$/.test(process.argv[1]);
 if (isMain) {
+  // Run straight from a developer machine (`npx tsx server/preflight.ts`) the settings come from
+  // .env; in a container they are already in the environment and this simply finds nothing to add.
+  await import('dotenv/config');
   const result = await checkDatabase(process.env.DATABASE_URL ?? '');
-  const line = { ts: new Date().toISOString(), level: result.ok ? 'info' : 'error', message: result.ok ? 'database reachable' : 'database preflight failed', host: result.host, database: result.database, ...(result.ok ? { version: result.version } : { reason: result.reason }) };
+  const line = { ts: new Date().toISOString(), level: result.ok ? 'info' : 'error', message: result.ok ? 'database reachable' : 'database preflight failed', host: result.host, database: result.database, ...(result.ok ? { version: result.version, encoding: result.encoding } : { reason: result.reason }) };
   (result.ok ? process.stdout : process.stderr).write(`${JSON.stringify(line)}\n`);
   process.exit(result.ok ? 0 : 10);
 }

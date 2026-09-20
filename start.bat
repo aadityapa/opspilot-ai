@@ -56,7 +56,7 @@ if "%EXIT%"=="130" exit /b 0
 
 echo.
 if "%EXIT%"=="10" (
-    echo   The database did not answer. See the message above.
+    echo   The database could not be used. See the message above.
     echo   If you use Docker Desktop, start it. If you use your own PostgreSQL, check that it is
     echo   running and that DATABASE_URL in .env is right. Nothing was changed.
 ) else if "%EXIT%"=="11" (

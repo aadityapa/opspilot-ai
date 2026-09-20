@@ -14,10 +14,12 @@
 import 'dotenv/config';
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+// These run real executables (tar.exe, pg_dump.exe, docker.exe), never a shell: with `shell: true`
+// Windows concatenates the arguments without quoting, so any path containing a space — the
+// documented layout here is "…\AI IT Helpdesk\opspilot-ai" — is split and the command fails.
 import { resolve } from 'node:path';
 import { createConnection } from 'node:net';
 
-const isWindows = process.platform === 'win32';
 const args = process.argv.slice(2);
 const outIndex = args.indexOf('--out');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -34,7 +36,7 @@ const pgEnv = { ...process.env, ...(parsed.password ? { PGPASSWORD: decodeURICom
 const database = parsed.pathname.slice(1);
 mkdirSync('backups', { recursive: true });
 
-const has = (cmd) => spawnSync(cmd, ['--version'], { encoding: 'utf8', shell: isWindows, windowsHide: true }).status === 0;
+const has = (cmd) => spawnSync(cmd, ['--version'], { encoding: 'utf8', windowsHide: true }).status === 0;
 const portOpen = (host, port) =>
   new Promise((done) => {
     const s = createConnection({ host, port });
@@ -56,7 +58,7 @@ const report = (file) => {
 if (has('pg_dump')) {
   const file = outIndex >= 0 ? args[outIndex + 1] : resolve('backups', `opspilot-${stamp}.dump`);
   console.log(`Backing up "${database}" with pg_dump…`);
-  const r = spawnSync('pg_dump', ['--format=custom', '--no-owner', '--no-privileges', '--file', file, urlWithoutPassword], { stdio: 'inherit', shell: isWindows, windowsHide: true, env: pgEnv });
+  const r = spawnSync('pg_dump', ['--format=custom', '--no-owner', '--no-privileges', '--file', file, urlWithoutPassword], { stdio: 'inherit', windowsHide: true, env: pgEnv });
   if (r.status !== 0) process.exit(r.status ?? 1);
   report(file);
   process.exit(0);
@@ -64,11 +66,11 @@ if (has('pg_dump')) {
 
 // 2. pg_dump inside the compose container.
 if (has('docker')) {
-  const running = spawnSync('docker', ['compose', 'ps', '--status', 'running', '--services'], { encoding: 'utf8', shell: isWindows, windowsHide: true });
+  const running = spawnSync('docker', ['compose', 'ps', '--status', 'running', '--services'], { encoding: 'utf8', windowsHide: true });
   if (running.status === 0 && running.stdout.split('\n').map((s) => s.trim()).includes('db')) {
     const file = outIndex >= 0 ? args[outIndex + 1] : resolve('backups', `opspilot-${stamp}.dump`);
     console.log(`Backing up "${database}" with pg_dump inside the db container…`);
-    const r = spawnSync('docker', ['compose', 'exec', '-T', 'db', 'pg_dump', '--format=custom', '--no-owner', '--no-privileges', '-U', parsed.username || 'opspilot', database], { encoding: 'buffer', maxBuffer: 1024 * 1024 * 1024, shell: isWindows, windowsHide: true });
+    const r = spawnSync('docker', ['compose', 'exec', '-T', 'db', 'pg_dump', '--format=custom', '--no-owner', '--no-privileges', '-U', parsed.username || 'opspilot', database], { encoding: 'buffer', maxBuffer: 1024 * 1024 * 1024, windowsHide: true });
     if (r.status !== 0) {
       process.stderr.write(r.stderr);
       process.exit(r.status ?? 1);
@@ -90,7 +92,7 @@ if (existsSync('.local-db/data/PG_VERSION')) {
   }
   const file = outIndex >= 0 ? args[outIndex + 1] : resolve('backups', `opspilot-localdb-${stamp}.tar`);
   console.log('Copying .local-db/data (file-level backup of the self-contained database)…');
-  const r = spawnSync('tar', ['-cf', file, '-C', '.local-db', 'data'], { stdio: 'inherit', shell: isWindows, windowsHide: true });
+  const r = spawnSync('tar', ['-cf', file, '-C', '.local-db', 'data'], { stdio: 'inherit', windowsHide: true });
   if (r.status !== 0) {
     console.error('tar is not available. On Windows 10+ it is built in; otherwise copy the .local-db folder by hand.');
     process.exit(r.status ?? 1);

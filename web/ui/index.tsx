@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { labels, type Person } from '../../shared/model';
 import { Icon } from './icons';
 
@@ -158,9 +158,27 @@ function useEscape(onClose: () => void) {
     return () => { document.removeEventListener('keydown', key); prev?.focus?.(); };
   }, [onClose]);
 }
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+/** Keeps Tab and Shift+Tab inside a dialog: the page behind an open modal is inert to the keyboard. */
+function useFocusTrap(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !ref.current) return;
+      const items = Array.from(ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || !ref.current.contains(active))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (active === last || !ref.current.contains(active))) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [ref]);
+}
 export function Modal({ title, onClose, children, footer, wide }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
   useEscape(onClose);
   const first = useRef<HTMLDivElement>(null);
+  useFocusTrap(first);
   useEffect(() => { first.current?.querySelector<HTMLElement>('input,select,textarea,button:not(.icon-btn)')?.focus(); }, []);
   return (
     <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} role="presentation">
@@ -175,6 +193,7 @@ export function Modal({ title, onClose, children, footer, wide }: { title: strin
 export function Drawer({ title, onClose, children, footer, eyebrow }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; eyebrow?: string }) {
   useEscape(onClose);
   const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref);
   useEffect(() => { ref.current?.querySelector<HTMLElement>('input,select,textarea,button:not(.icon-btn)')?.focus(); }, []);
   return (
     <div className="overlay drawer-host" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }} role="presentation">

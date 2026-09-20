@@ -77,6 +77,11 @@ Administration pages share `web/admin-nav.tsx` (`AdminLayout`).
   comparison is drawn only when both periods have a value, otherwise the strip says "no previous
   period to compare"; samples under five are marked *limited*; tables of people are alphabetical and
   say they are not a ranking.
+- **Time has two kinds.** Timestamps (created, updated, resolved, due, replies) are formatted in
+  the viewer's own time zone (`fmtDate`, `fmtDay`, `fmtAgo`). Calendar dates with no time of day
+  (purchase and warranty dates, date answers on a request form) are stored as UTC midnight or
+  `YYYY-MM-DD` and formatted in UTC (`fmtCalendarDay`), so a viewer west of Greenwich never sees the
+  previous day. The server computes every window and SLA deadline from its own clock in UTC.
 - **Settings pages are sections.** Administration pages are a stack of `SettingsSection`s, each with
   a title, one explanatory sentence and its controls; a capability the API does not have is named in
   a "Not in this release" note rather than drawn as a disabled switch.
