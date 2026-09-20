@@ -11,12 +11,13 @@
 import { spawnSync } from 'node:child_process';
 import { db } from '../server/db.js';
 import { config } from '../server/config.js';
+import { demoResetRefusal, nonDemoAccountRefusal } from './demo-guard.js';
 
 const refuse = (why: string) => { console.error(`\n  ✗ ${why}\n`); process.exit(1); };
-if (config.NODE_ENV === 'production' || config.ALLOW_DEMO_SEED !== 'true' || !process.env.DEMO_PASSWORD) refuse('demo:reset needs a non-production NODE_ENV, ALLOW_DEMO_SEED=true and DEMO_PASSWORD in .env.');
-if (!['localhost', '127.0.0.1', 'db'].includes(new URL(config.DATABASE_URL).hostname)) refuse('demo:reset only runs against a local database.');
-const real = await db.user.count({ where: { isDemo: false } });
-if (real > 0) refuse(`Refusing: this database holds ${real} account(s) that are not demo accounts. Nothing was changed.`);
+const configProblem = demoResetRefusal({ nodeEnv: config.NODE_ENV, allowDemoSeed: config.ALLOW_DEMO_SEED, demoPassword: process.env.DEMO_PASSWORD, databaseUrl: config.DATABASE_URL });
+if (configProblem) refuse(configProblem);
+const populated = nonDemoAccountRefusal(await db.user.count({ where: { isDemo: false } }));
+if (populated) refuse(populated);
 
 const tables = await db.$queryRaw<{ tablename: string }[]>`SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT IN ('_prisma_migrations', 'SlaPolicy')`;
 if (tables.length) await db.$executeRawUnsafe(`TRUNCATE TABLE ${tables.map((t) => `"${t.tablename}"`).join(', ')} RESTART IDENTITY CASCADE`);

@@ -160,26 +160,29 @@ interface Story {
   title: string; description: string; requester: string; assignee?: string; status: 'OPEN' | 'IN_PROGRESS' | 'WAITING_FOR_USER' | 'RESOLVED' | 'CLOSED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'; type?: 'INCIDENT' | 'REQUEST' | 'PROBLEM' | 'CHANGE'; category: string; asset?: string;
   createdDaysAgo: number; resolvedDaysAgo?: number; pausedHours?: number; replyAfterHours?: number; reply?: [string, string]; survey?: [string, number, string];
+  /** Directory key of somebody the reply names with an "@". The mention is stored as a relation, the
+   *  way the reply endpoint stores one, so the seeded "you were mentioned" notification is true. */
+  mention?: string;
 }
 
 export async function seedServiceHistory(users: Ids, assets: Ids, categories: Record<string, string>) {
   const stories: Story[] = [
-    { title: 'VPN disconnects during video calls', description: 'Fictional demo report: the VPN drops roughly every twenty minutes during video calls, most often when screen sharing. Reconnecting works but the call is lost.', requester: 'maya', assignee: 'alex', status: 'IN_PROGRESS', priority: 'HIGH', category: 'Network', asset: 'LAP-0001', createdDaysAgo: 0.18, replyAfterHours: 0.7, reply: ['alex', 'Thanks — I can see the disconnects in the gateway log. Could you try the profile steps in the VPN article and tell me whether it survives a full call?'] },
+    { title: 'VPN disconnects during video calls', description: 'Fictional demo report: the VPN drops roughly every twenty minutes during video calls, most often when screen sharing. Reconnecting works but the call is lost.', requester: 'maya', assignee: 'alex', status: 'IN_PROGRESS', priority: 'HIGH', category: 'Network', asset: 'LAP-0001', createdDaysAgo: 0.18, replyAfterHours: 0.7, mention: 'maya', reply: ['alex', '@Maya Chen thanks — I can see the disconnects in the gateway log. Could you try the profile steps in the VPN article and tell me whether it survives a full call?'] },
     { title: 'Laptop battery does not hold a charge', description: 'Fictional demo report: the laptop lasts under an hour away from power. Battery health reports 61% in the power settings.', requester: 'noah', status: 'OPEN', priority: 'MEDIUM', category: 'Hardware', asset: 'LAP-0002', createdDaysAgo: 0.06 },
     { title: 'Unable to access the shared finance folder', description: 'Fictional demo report: the quarterly close folder returns "access denied" since Monday. Other folders on the same drive open normally.', requester: 'samuel.obi', assignee: 'priya.raman', status: 'WAITING_FOR_USER', priority: 'MEDIUM', category: 'Access & identity', createdDaysAgo: 3, pausedHours: 5, replyAfterHours: 1.5, reply: ['priya.raman', 'The folder owner has been asked to confirm your access level. Could you confirm whether you need read or edit?'] },
     { title: 'Office printer shows offline', description: 'Fictional demo report: the third-floor printer shows offline for everyone on the floor. The display reads Ready and the tray is full.', requester: 'lena.fischer', status: 'OPEN', priority: 'LOW', category: 'Hardware', asset: 'PRN-0001', createdDaysAgo: 0.1 },
     { title: 'Software license activation failed', description: 'Fictional demo report: the design suite reports an activation error on launch and closes after ten seconds.', requester: 'victor.hale', assignee: 'alex', status: 'IN_PROGRESS', priority: 'MEDIUM', category: 'Software', createdDaysAgo: 0.45, replyAfterHours: 1, reply: ['alex', 'The licence server shows the seat as free. I am re-issuing the activation and will confirm once it is applied.'] },
     { title: 'Guest Wi-Fi is not available', description: 'Fictional demo report: visitors in the ground-floor meeting rooms cannot see the guest network. Staff Wi-Fi works in the same rooms.', requester: 'cara.nwosu', status: 'OPEN', priority: 'MEDIUM', category: 'Network', asset: 'WAP-0003', createdDaysAgo: 2.4 },
-    { title: 'Two-factor app stopped generating codes', description: 'Fictional demo report: after replacing a phone the authenticator app no longer lists the work account, so sign-in cannot be completed.', requester: 'hana.suzuki', assignee: 'priya.raman', status: 'RESOLVED', priority: 'HIGH', category: 'Access & identity', createdDaysAgo: 9, resolvedDaysAgo: 8.8, replyAfterHours: 0.5, reply: ['priya.raman', 'Identity verified through the standard check and the second factor re-enrolled. Please confirm you can sign in from both devices.'], survey: ['hana.suzuki', 5, 'Sorted within an hour, and the explanation was clear.'] },
-    { title: 'Spreadsheet macros blocked after update', description: 'Fictional demo report: the month-end workbook reports that macros are blocked by policy since the latest update.', requester: 'ingrid.larsen', assignee: 'alex', status: 'RESOLVED', priority: 'MEDIUM', category: 'Software', createdDaysAgo: 12, resolvedDaysAgo: 10, replyAfterHours: 3, reply: ['alex', 'The workbook now lives in a trusted location, so the macros run without changing the policy for everyone else.'], survey: ['ingrid.larsen', 4, 'Good fix, took a couple of days to get going.'] },
-    { title: 'Meeting room display does not detect laptops', description: 'Fictional demo report: the display in the Harbour room shows "no signal" for every laptop tried, over both cable and wireless.', requester: 'elliot.brady', assignee: 'priya.raman', status: 'RESOLVED', priority: 'LOW', category: 'Hardware', createdDaysAgo: 15, resolvedDaysAgo: 13, reply: ['priya.raman', 'The display input was set to the wrong channel after the firmware update. Corrected and left on the laptop input.'] },
+    { title: 'Two-factor app stopped generating codes', description: 'Fictional demo report: after replacing a phone the authenticator app no longer lists the work account, so sign-in cannot be completed.', requester: 'hana.suzuki', assignee: 'priya.raman', status: 'RESOLVED', priority: 'HIGH', category: 'Access & identity', createdDaysAgo: 6.2, resolvedDaysAgo: 6, replyAfterHours: 0.5, reply: ['priya.raman', 'Identity verified through the standard check and the second factor re-enrolled. Please confirm you can sign in from both devices.'], survey: ['hana.suzuki', 5, 'Sorted within an hour, and the explanation was clear.'] },
+    { title: 'Spreadsheet macros blocked after update', description: 'Fictional demo report: the month-end workbook reports that macros are blocked by policy since the latest update.', requester: 'ingrid.larsen', assignee: 'alex', status: 'RESOLVED', priority: 'MEDIUM', category: 'Software', createdDaysAgo: 4.6, resolvedDaysAgo: 3.7, replyAfterHours: 3, reply: ['alex', 'The workbook now lives in a trusted location, so the macros run without changing the policy for everyone else.'], survey: ['ingrid.larsen', 4, 'Good fix, took a couple of days to get going.'] },
+    { title: 'Meeting room display does not detect laptops', description: 'Fictional demo report: the display in the Harbour room shows "no signal" for every laptop tried, over both cable and wireless.', requester: 'elliot.brady', assignee: 'priya.raman', status: 'RESOLVED', priority: 'LOW', category: 'Hardware', createdDaysAgo: 2.8, resolvedDaysAgo: 2.2, reply: ['priya.raman', 'The display input was set to the wrong channel after the firmware update. Corrected and left on the laptop input.'] },
     { title: 'Email delivery delayed for external recipients', description: 'Fictional demo report: messages to customers arrive between twenty and forty minutes late. Internal mail is immediate.', requester: 'cara.nwosu', assignee: 'alex', status: 'RESOLVED', priority: 'HIGH', category: 'Software', createdDaysAgo: 18, resolvedDaysAgo: 17.75, replyAfterHours: 0.4, reply: ['alex', 'A queue on the outbound relay was clearing slowly. The backlog is gone and the queue is being watched for the rest of the week.'], survey: ['cara.nwosu', 5, 'Kept us posted the whole way through.'] },
     { title: 'Laptop fan runs constantly after firmware update', description: 'Fictional demo report: the fan runs at full speed from boot, even with nothing open. The device is noticeably hot.', requester: 'tom.okafor', assignee: 'alex', status: 'IN_PROGRESS', priority: 'MEDIUM', category: 'Hardware', asset: 'LAP-0007', createdDaysAgo: 0.8, replyAfterHours: 2, reply: ['alex', 'The firmware update reset the fan curve. I have the corrected profile ready — can I take the laptop for twenty minutes this afternoon?'] },
     { title: 'Shared mailbox missing from Outlook', description: 'Fictional demo report: the team mailbox disappeared from the sidebar this morning for two of us but not the third.', requester: 'elliot.brady', status: 'OPEN', priority: 'MEDIUM', category: 'Access & identity', createdDaysAgo: 0.12 },
     { title: 'Phone cannot join the staff Wi-Fi', description: 'Fictional demo report: the work phone rejects the staff network with an authentication error, laptops on the same desk connect.', requester: 'dana.whitfield', assignee: 'priya.raman', status: 'WAITING_FOR_USER', priority: 'LOW', category: 'Network', createdDaysAgo: 2, pausedHours: 9, replyAfterHours: 3, reply: ['priya.raman', 'The phone is being rejected by the certificate check. Could you tell me the operating system version so I can send the right profile?'] },
     { title: 'Password reset link never arrives', description: 'Fictional demo report: three reset attempts produced no email, including to the personal address on file.', requester: 'victor.hale', assignee: 'alex', status: 'RESOLVED', priority: 'URGENT', category: 'Access & identity', createdDaysAgo: 20, resolvedDaysAgo: 19.6, replyAfterHours: 0.6, reply: ['alex', 'Delivery was failing to that domain. Fixed at the relay and the reset completed with the requester on the phone.'], survey: ['victor.hale', 3, 'Solved in the end, but it took three attempts to get someone looking at it.'] },
     { title: 'Docking station does not detect the second monitor', description: 'Fictional demo report: the dock drives one monitor but not the second. Both monitors work when plugged directly into the laptop.', requester: 'maya', assignee: 'alex', status: 'RESOLVED', priority: 'MEDIUM', category: 'Hardware', asset: 'DSK-0001', createdDaysAgo: 17, resolvedDaysAgo: 16.6, replyAfterHours: 1.5, reply: ['alex', 'The dock firmware was two versions behind and only drove one display port. Updated on your machine and added to the standard image.'], survey: ['maya', 5, 'Explained what caused it, not just that it was fixed.'] },
-    { title: 'Access to the engineering build server', description: 'Fictional demo report: read access is needed to the build server logs to investigate failing nightly builds.', requester: 'maya', assignee: 'priya.raman', status: 'RESOLVED', priority: 'MEDIUM', type: 'REQUEST', category: 'Access & identity', createdDaysAgo: 14, resolvedDaysAgo: 13.5, replyAfterHours: 2, reply: ['priya.raman', 'Read access granted to the build log share. It is reviewed quarterly like every other access grant.'] },
+    { title: 'Access to the engineering build server', description: 'Fictional demo report: read access is needed to the build server logs to investigate failing nightly builds.', requester: 'maya', assignee: 'priya.raman', status: 'RESOLVED', priority: 'MEDIUM', type: 'REQUEST', category: 'Access & identity', createdDaysAgo: 5.5, resolvedDaysAgo: 5.2, replyAfterHours: 2, reply: ['priya.raman', 'Read access granted to the build log share. It is reviewed quarterly like every other access grant.'] },
     { title: 'Calendar invitations show the wrong time zone', description: 'Fictional demo report: invitations sent from the laptop appear an hour out for colleagues in another office.', requester: 'maya', assignee: 'alex', status: 'CLOSED', priority: 'LOW', category: 'Software', createdDaysAgo: 24, resolvedDaysAgo: 22, reply: ['alex', 'The calendar client had a stale time-zone database. Updated, and the sample invitations now show the correct time for both offices.'] },
     { title: 'Finance reporting tool times out on large exports', description: 'Fictional demo report: exports over roughly fifty thousand rows time out after five minutes. Smaller exports finish normally.', requester: 'samuel.obi', status: 'OPEN', priority: 'MEDIUM', type: 'PROBLEM', category: 'Software', createdDaysAgo: 8 },
   ];
@@ -208,7 +211,7 @@ export async function seedServiceHistory(users: Ids, assets: Ids, categories: Re
       // The first reply stops the response clock at the moment it was written — soon after the
       // ticket was raised, not at the moment it was resolved.
       const at = new Date(created.getTime() + (s.replyAfterHours ?? 1) * HOUR);
-      await db.reply.create({ data: { ticketId: ticket.id, authorId: users[s.reply[0]], body: s.reply[1], createdAt: at } });
+      await db.reply.create({ data: { ticketId: ticket.id, authorId: users[s.reply[0]], body: s.reply[1], createdAt: at, ...(s.mention && users[s.mention] ? { mentions: { connect: { id: users[s.mention] } } } : {}) } });
       await db.ticketSla.update({ where: { ticketId: ticket.id }, data: { responseSatisfiedAt: at, ...(['RESOLVED', 'CLOSED'].includes(s.status) ? { runningSince: null } : {}) } });
       await db.ticket.update({ where: { id: ticket.id }, data: { firstRespondedAt: at } });
     }
@@ -493,8 +496,13 @@ export async function seedArticleFeedback(users: Ids) {
  * delivered so the demo never posts mail for history that predates the installation.
  *
  * (An announcement is not a notification kind in this system: announcements are published to My
- * Space and the announcement list. The four unread examples are therefore a mention, an approval,
- * a reply on a request, and a rating request.)
+ * Space and the announcement list. The four unread examples are therefore a mention and a reply
+ * for the employee, an approval for the manager, and a reply for the second employee.)
+ *
+ * Every row describes something that exists: a reply row for PUBLIC_REPLY, a resolved ticket for
+ * SURVEY_REQUEST, an approval row for APPROVAL_REQUESTED and APPROVAL_DECIDED, the ticket's own
+ * assignee for ASSIGNMENT, and a reply that names the recipient for MENTION. A notification about
+ * an event that never happened would be exactly the kind of invented detail this demo avoids.
  */
 export async function seedInbox(users: Ids) {
   const rows: [string, string, string, number, boolean][] = [
@@ -503,17 +511,15 @@ export async function seedInbox(users: Ids) {
     ['maya', 'VPN disconnects during video calls', 'PUBLIC_REPLY', 1, true],
     ['maya', 'Docking station does not detect the second monitor', 'PUBLIC_REPLY', 16, false],
     ['maya', 'Docking station does not detect the second monitor', 'SURVEY_REQUEST', 16, false],
-    ['maya', 'Access to the engineering build server', 'PUBLIC_REPLY', 13, false],
-    ['maya', 'Access to the engineering build server', 'APPROVAL_DECIDED', 13.5, false],
+    ['maya', 'Access to the engineering build server', 'PUBLIC_REPLY', 5.2, false],
     ['maya', 'Calendar invitations show the wrong time zone', 'PUBLIC_REPLY', 22, false],
     ['maya', 'Calendar invitations show the wrong time zone', 'SURVEY_REQUEST', 22, false],
-    ['maya', 'VPN disconnects during video calls', 'WATCHED_UPDATE', 1.5, false],
     ['jordan', 'Replacement laptop for Noah Williams', 'APPROVAL_REQUESTED', 2, true],
     ['noah', 'Laptop battery does not hold a charge', 'PUBLIC_REPLY', 2, true],
-    ['hana.suzuki', 'Two-factor app stopped generating codes', 'SURVEY_REQUEST', 8, false],
-    ['hana.suzuki', 'Two-factor app stopped generating codes', 'PUBLIC_REPLY', 8, false],
-    ['ingrid.larsen', 'Spreadsheet macros blocked after update', 'SURVEY_REQUEST', 10, false],
-    ['ingrid.larsen', 'Spreadsheet macros blocked after update', 'PUBLIC_REPLY', 10, false],
+    ['hana.suzuki', 'Two-factor app stopped generating codes', 'SURVEY_REQUEST', 6, false],
+    ['hana.suzuki', 'Two-factor app stopped generating codes', 'PUBLIC_REPLY', 6.1, false],
+    ['ingrid.larsen', 'Spreadsheet macros blocked after update', 'SURVEY_REQUEST', 3.7, false],
+    ['ingrid.larsen', 'Spreadsheet macros blocked after update', 'PUBLIC_REPLY', 4.5, false],
     ['samuel.obi', 'Access to the quarterly close folder', 'APPROVAL_DECIDED', 10, false],
     ['samuel.obi', 'Unable to access the shared finance folder', 'PUBLIC_REPLY', 3, false],
     ['cara.nwosu', 'Email delivery delayed for external recipients', 'SURVEY_REQUEST', 16, false],
@@ -521,7 +527,6 @@ export async function seedInbox(users: Ids) {
     ['alex', 'VPN disconnects during video calls', 'ASSIGNMENT', 1, false],
     ['alex', 'Software license activation failed', 'ASSIGNMENT', 2, false],
     ['priya.raman', 'Unable to access the shared finance folder', 'ASSIGNMENT', 3, false],
-    ['maya', 'VPN disconnects during video calls', 'ASSIGNMENT', 1, false],
   ];
   for (const [who, title, kind, daysAgo, unread] of rows) {
     const recipientId = users[who];

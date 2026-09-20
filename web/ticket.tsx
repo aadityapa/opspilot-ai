@@ -4,6 +4,7 @@ import { AssetPicker, EventsTimeline, InternalNoteForm, InternalNotes, Pending, 
 import { labels, priorities, transitions, type ActivityItem, type Attachment, type CurrentUser, type Person, type Ticket } from '../shared/model';
 import { AiTicketPanel } from './ai';
 import { SuggestedArticles } from './catalog';
+import { searchTerms } from '../shared/search';
 import { ApprovalsPanel, Attachments, CsatPrompt, MentionText, MentionTextarea, TicketClassification, Watchers } from './ticket-extras';
 import { Icon } from './ui/icons';
 import { Avatar, Menu, Modal, fmtAgo, ticketKey, toast } from './ui';
@@ -344,8 +345,8 @@ function SlaRow({ label, state, main, ratio, target }: { label: string; state: '
 }
 
 function KnowledgeFallback({ title, description }: { title: string; description: string }) {
-  const q = `${title} ${description}`.trim().split(/\s+/).filter((w) => w.length > 3).slice(0, 4).join(' ');
-  return <p className="muted t-caption">Matched from the knowledge base by the ticket's own words{q ? '' : ' — nothing to match yet'}. <a href="#/knowledge">Browse all articles →</a></p>;
+  const terms = searchTerms(`${title} ${description}`);
+  return <p className="muted t-caption">Matched from the knowledge base by the ticket's own words{terms.length ? '' : ' — nothing to match yet'}. <a href="#/knowledge">Browse all articles →</a></p>;
 }
 
 function RelatedWork({ t }: { t: Ticket }) {

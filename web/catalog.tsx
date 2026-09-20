@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from './api';
 import { AssetPicker, useRecord, type Act } from './operations';
 import { labels, priorityFor, ticketTypes, type ArticleSummary, type CatalogItem, type CurrentUser, type FormField, type Ticket, type TicketTemplate } from '../shared/model';
+import { searchTerms } from '../shared/search';
 import { Icon } from './ui/icons';
 import { EmptyState, Skeleton, fmtAgo, ticketKey } from './ui';
 import { APPROVER_WORD } from './employee';
@@ -36,11 +37,19 @@ export const icon = (name: string) => (
 /** Knowledge articles that match what the person is typing, shown before they submit. */
 export function SuggestedArticles({ text }: { text: string }) {
   const [items, setItems] = useState<ArticleSummary[]>([]);
-  const q = text.trim().split(/\s+/).filter((w) => w.length > 3).slice(0, 4).join(' ');
+  const q = searchTerms(text).join(' ');
   useEffect(() => {
-    if (q.length < 4) { setItems([]); return; }
+    const terms = q ? q.split(' ') : [];
+    if (!terms.length) { setItems([]); return; }
     let live = true;
-    const t = setTimeout(() => void api<{ items: ArticleSummary[] }>(`/articles?q=${encodeURIComponent(q)}&pageSize=3`).then((r) => { if (live) setItems(r.items); }).catch(() => {}), 350);
+    const t = setTimeout(() => void (async () => {
+      for (const term of terms) {
+        const r = await api<{ items: ArticleSummary[] }>(`/articles?q=${encodeURIComponent(term)}&pageSize=3`).catch(() => ({ items: [] }));
+        if (!live) return;
+        if (r.items.length) { setItems(r.items); return; }
+      }
+      if (live) setItems([]);
+    })(), 350);
     return () => { live = false; clearTimeout(t); };
   }, [q]);
   if (!items.length) return null;

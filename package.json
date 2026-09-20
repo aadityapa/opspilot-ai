@@ -33,6 +33,7 @@
     "admin:create": "tsx server/cli/create-admin.ts",
     "db:upgrade": "node scripts/upgrade-db.mjs",
     "demo:reset": "tsx scripts/demo-reset.ts",
+    "demo:check": "tsx scripts/demo-check.ts",
     "perf:dataset": "tsx scripts/perf-dataset.ts"
   },
   "overrides": {
