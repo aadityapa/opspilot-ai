@@ -1,0 +1,10 @@
+import {Router} from 'express';
+import {db} from './db.js';
+import {staff,admin,fail,idOf,person} from './http.js';
+import {replySchema} from '../shared/contracts.js';
+import {pageSchema} from '../shared/operations.js';
+export const notesRouter=Router();
+notesRouter.get('/tickets/:id/notes',staff,async(req,res)=>{const id=idOf(req);if(!await db.ticket.findUnique({where:{id}}))fail(404,'Ticket not found');res.json(await db.reply.findMany({where:{ticketId:id,internal:true},include:{author:{select:person}},orderBy:{createdAt:'asc'}}));});
+notesRouter.post('/tickets/:id/notes',staff,async(req,res)=>{const id=idOf(req);const data=replySchema.parse(req.body);const note=await db.$transaction(async tx=>{await tx.$queryRaw`SELECT id FROM "Ticket" WHERE id=${id} FOR UPDATE`;if(!await tx.ticket.findUnique({where:{id}}))fail(404,'Ticket not found');const note=await tx.reply.create({data:{ticketId:id,authorId:res.locals.user.id,body:data.body,internal:true},include:{author:{select:person}}});await tx.ticket.update({where:{id},data:{version:{increment:1}}});await tx.event.create({data:{ticketId:id,actorId:res.locals.user.id,action:'INTERNAL_NOTE',detail:'Internal note added',internal:true}});return note;});res.status(201).json(note);});
+notesRouter.get('/tickets/:id/events',staff,async(req,res)=>{const id=idOf(req);if(!await db.ticket.findUnique({where:{id}}))fail(404,'Ticket not found');res.json(await db.event.findMany({where:{ticketId:id},include:{actor:{select:person}},orderBy:[{createdAt:'asc'},{id:'asc'}]}));});
+notesRouter.get('/admin/audit',admin,async(req,res)=>{const f=pageSchema.parse(req.query);const where=f.q?{OR:[{action:{contains:f.q,mode:'insensitive' as const}},{detail:{contains:f.q,mode:'insensitive' as const}}]}:{};const [items,total]=await db.$transaction([db.event.findMany({where,include:{actor:{select:person}},orderBy:[{createdAt:'desc'},{id:'asc'}],skip:(f.page-1)*f.pageSize,take:f.pageSize}),db.event.count({where})]);res.json({items,total,page:f.page,pageSize:f.pageSize});});

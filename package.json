@@ -1,0 +1,89 @@
+{
+  "name": "opspilot-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "start:dev": "node scripts/start.mjs",
+    "dev": "concurrently -k -n api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:local": "node scripts/dev-local.mjs",
+    "dev:api": "tsx watch server/index.ts",
+    "dev:web": "vite",
+    "db:local": "node scripts/local-db.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "node dist/server/index.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "node scripts/test.mjs",
+    "test:e2e": "node scripts/e2e.mjs",
+    "eval:real": "node scripts/eval-real.mjs",
+    "ai:reindex": "tsx scripts/reindex.ts",
+    "bench:retrieval": "tsx scripts/benchmark-retrieval.ts",
+    "doctor": "node scripts/doctor.mjs",
+    "verify:containers": "node scripts/verify-containers.mjs",
+    "db:claim-test": "node scripts/claim-test-databases.mjs",
+    "doctor:prod": "tsx scripts/check-production.ts",
+    "db:backup": "node scripts/backup.mjs",
+    "db:restore": "node scripts/restore.mjs",
+    "admin:create": "tsx server/cli/create-admin.ts",
+    "db:upgrade": "node scripts/upgrade-db.mjs"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.2"
+    },
+    "prisma": {
+      "mysql2": "3.24.4"
+    }
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "cookie-parser": "1.4.7",
+    "cors": "2.8.6",
+    "dotenv": "17.4.2",
+    "express": "5.2.1",
+    "express-rate-limit": "8.7.0",
+    "helmet": "8.3.0",
+    "marked": "18.0.12",
+    "multer": "2.3.0",
+    "nodemailer": "10.0.1",
+    "pg": "8.23.0",
+    "prisma": "7.10.0",
+    "qrcode": "1.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sanitize-html": "2.17.7",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/cookie-parser": "1.4.10",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.6",
+    "@types/multer": "2.2.0",
+    "@types/node": "24.13.3",
+    "@types/nodemailer": "8.0.1",
+    "@types/pg": "8.23.1",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@types/sanitize-html": "2.16.1",
+    "@types/supertest": "7.2.1",
+    "@vitejs/plugin-react": "6.1.1",
+    "concurrently": "10.0.5",
+    "prettier": "3.9.6",
+    "supertest": "7.2.2",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vite": "8.2.2",
+    "vitest": "5.0.0"
+  }
+}

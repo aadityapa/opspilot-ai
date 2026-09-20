@@ -1,0 +1,528 @@
+generator client {
+  provider = "prisma-client"
+  output = "../generated/prisma"
+  importFileExtension = "js"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  EMPLOYEE
+  ENGINEER
+  ADMIN
+}
+enum Status {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_USER
+  RESOLVED
+  CLOSED
+}
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  name String
+  passwordHash String
+  role Role @default(EMPLOYEE)
+  active Boolean @default(true)
+  isDemo Boolean @default(false)
+  createdAt DateTime @default(now())
+  // Auth hardening. The TOTP secret is stored encrypted (AES-256-GCM under APP_SECRET); recovery
+  // codes are stored as SHA-256 hashes, one row each, and deleted when used.
+  mfaEnabled Boolean @default(false)
+  mfaSecret String?
+  mfaPendingSecret String?
+  mfaLastStep Int?
+  failedLogins Int @default(0)
+  lockedUntil DateTime? @db.Timestamptz(3)
+  lastLoginAt DateTime? @db.Timestamptz(3)
+  passwordChangedAt DateTime? @db.Timestamptz(3)
+  mustChangePassword Boolean @default(false)
+  deletedAt DateTime? @db.Timestamptz(3)
+  // People & organisation (Phase 6)
+  title String?
+  location String?
+  phone String?
+  departmentId String?
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  managerId String?
+  manager User? @relation("manager", fields: [managerId], references: [id], onDelete: SetNull)
+  reports User[] @relation("manager")
+  notifyPrefs Json?
+  recoveryCodes RecoveryCode[]
+  passwordResets PasswordReset[]
+  managedDepartments Department[] @relation("departmentManager")
+  watching Watcher[]
+  attachments Attachment[]
+  approvals Approval[] @relation("approver")
+  savedViews SavedView[]
+  announcements Announcement[]
+  surveys Survey[]
+  mentionedIn Reply[] @relation("mentions")
+  requests Ticket[] @relation("requester")
+  assignments Ticket[] @relation("assignee")
+  replies Reply[]
+  sessions Session[]
+  events Event[]
+  assets Asset[]
+  articles Article[]
+  articleFeedback ArticleFeedback[]
+  notifications Outbox[]
+  aiUsage AiUsage[]
+}
+model Session {
+  tokenHash String @id
+  id String @unique @default(uuid())
+  csrfToken String
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
+  ip String?
+  userAgent String?
+  // True between password acceptance and second-factor verification. Such a session may only
+  // call the MFA endpoints and sign out.
+  mfaPending Boolean @default(false)
+  @@index([expiresAt])
+  @@index([userId])
+}
+model RecoveryCode {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+model PasswordReset {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String @unique
+  expiresAt DateTime @db.Timestamptz(3)
+  usedAt DateTime? @db.Timestamptz(3)
+  requestedBy String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId])
+}
+model Category {
+  id String @id @default(uuid())
+  name String @unique
+  tickets Ticket[]
+  articles Article[]
+  catalogItems CatalogItem[]
+}
+model Ticket {
+  id String @id @default(uuid())
+  number Int @unique @default(autoincrement())
+  title String
+  description String
+  status Status @default(OPEN)
+  priority Priority @default(MEDIUM)
+  categoryId String
+  category Category @relation(fields: [categoryId], references: [id])
+  requesterId String
+  requester User @relation("requester", fields: [requesterId], references: [id])
+  assigneeId String?
+  assignee User? @relation("assignee", fields: [assigneeId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  firstRespondedAt DateTime?
+  resolvedAt DateTime?
+  version Int @default(0)
+  replies Reply[]
+  events Event[]
+  assetId String?
+  asset Asset? @relation(fields: [assetId], references: [id])
+  sla TicketSla?
+  notifications Outbox[]
+  // Workspace (Phase 6): ITSM record type, impact/urgency matrix, labels, board rank, due date,
+  // catalog origin with its submitted form, approvals, watchers, attachments, satisfaction.
+  type TicketType @default(INCIDENT)
+  impact Impact @default(MEDIUM)
+  urgency Impact @default(MEDIUM)
+  labels String[] @default([])
+  rank Int @default(0)
+  dueAt DateTime? @db.Timestamptz(3)
+  catalogItemId String?
+  catalogItem CatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  formData Json?
+  closedAt DateTime? @db.Timestamptz(3)
+  approvals Approval[]
+  watchers Watcher[]
+  attachments Attachment[]
+  survey Survey?
+  @@index([requesterId, createdAt])
+  @@index([status, assigneeId])
+  @@index([type, status])
+  @@index([status, rank])
+}
+enum TicketType {
+  INCIDENT
+  REQUEST
+  PROBLEM
+  CHANGE
+}
+enum Impact {
+  LOW
+  MEDIUM
+  HIGH
+}
+model Department {
+  id String @id @default(uuid())
+  name String @unique
+  code String @unique
+  costCentre String?
+  managerId String?
+  manager User? @relation("departmentManager", fields: [managerId], references: [id], onDelete: SetNull)
+  parentId String?
+  parent Department? @relation("departmentTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Department[] @relation("departmentTree")
+  members User[]
+  catalogItems CatalogItem[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+model CatalogItem {
+  id String @id @default(uuid())
+  name String @unique
+  description String
+  icon String @default("box")
+  type TicketType @default(REQUEST)
+  categoryId String
+  category Category @relation(fields: [categoryId], references: [id])
+  priority Priority @default(MEDIUM)
+  // Form schema: [{ key, label, kind: text|textarea|select|number|date|checkbox, required, options? }]
+  fields Json @default("[]")
+  requiresApproval Boolean @default(false)
+  // Who approves: MANAGER (the requester's manager), ADMIN (any administrator), or a department's manager.
+  approverKind ApproverKind @default(MANAGER)
+  approverDepartmentId String?
+  approverDepartment Department? @relation(fields: [approverDepartmentId], references: [id], onDelete: SetNull)
+  active Boolean @default(true)
+  sortOrder Int @default(0)
+  tickets Ticket[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+enum ApproverKind {
+  MANAGER
+  ADMIN
+  DEPARTMENT_MANAGER
+}
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+model Approval {
+  id String @id @default(uuid())
+  ticketId String
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  approverId String
+  approver User @relation("approver", fields: [approverId], references: [id])
+  status ApprovalStatus @default(PENDING)
+  note String?
+  decidedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([approverId, status])
+  @@index([ticketId])
+}
+model Watcher {
+  ticketId String
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@id([ticketId, userId])
+  @@index([userId])
+}
+model Attachment {
+  id String @id @default(uuid())
+  ticketId String
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  replyId String?
+  reply Reply? @relation(fields: [replyId], references: [id], onDelete: SetNull)
+  uploaderId String
+  uploader User @relation(fields: [uploaderId], references: [id])
+  filename String
+  mime String
+  size Int
+  sha256 String
+  storageKey String @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([ticketId])
+}
+model SavedView {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name String
+  filters Json
+  shared Boolean @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([userId, name])
+}
+model TicketTemplate {
+  id String @id @default(uuid())
+  name String @unique
+  title String
+  description String
+  categoryId String
+  priority Priority @default(MEDIUM)
+  type TicketType @default(INCIDENT)
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+model Survey {
+  id String @id @default(uuid())
+  ticketId String @unique
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  respondentId String
+  respondent User @relation(fields: [respondentId], references: [id])
+  score Int
+  comment String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([createdAt])
+}
+enum Audience {
+  ALL
+  STAFF
+}
+model Announcement {
+  id String @id @default(uuid())
+  title String
+  body String
+  audience Audience @default(ALL)
+  authorId String
+  author User @relation(fields: [authorId], references: [id])
+  pinned Boolean @default(false)
+  publishedAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([publishedAt])
+}
+model Reply {
+  id String @id @default(uuid())
+  ticketId String
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  authorId String
+  author User @relation(fields: [authorId], references: [id])
+  body String
+  internal Boolean @default(false)
+  createdAt DateTime @default(now())
+  editedAt DateTime? @db.Timestamptz(3)
+  mentions User[] @relation("mentions")
+  attachments Attachment[]
+  @@index([ticketId, createdAt])
+}
+model Event {
+  id String @id @default(uuid())
+  ticketId String?
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+  actorId String?
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action String
+  detail String
+  internal Boolean @default(true)
+  ip String?
+  createdAt DateTime @default(now())
+  @@index([ticketId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+}
+enum AssetType {
+  LAPTOP
+  DESKTOP
+  ACCESS_POINT
+  PRINTER
+  SWITCH
+}
+enum AssetStatus {
+  IN_USE
+  AVAILABLE
+  REPAIR
+  RETIRED
+}
+model Asset {
+  id String @id @default(uuid())
+  tag String @unique
+  type AssetType
+  manufacturer String
+  model String
+  serialNumber String
+  ownerId String?
+  owner User? @relation(fields: [ownerId], references: [id])
+  status AssetStatus @default(AVAILABLE)
+  purchaseDate DateTime? @db.Date
+  warrantyExpiry DateTime? @db.Date
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  version Int @default(0)
+  tickets Ticket[]
+  @@index([ownerId, tag])
+}
+model SlaPolicy {
+  priority Priority @id
+  responseMinutes Int
+  resolutionMinutes Int
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+model TicketSla {
+  id String @id @default(uuid())
+  ticketId String @unique
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  priority Priority
+  responseMinutes Int
+  resolutionMinutes Int
+  startedAt DateTime @db.Timestamptz(3)
+  responseDueAt DateTime @db.Timestamptz(3)
+  responseSatisfiedAt DateTime? @db.Timestamptz(3)
+  responseBreachAt DateTime? @db.Timestamptz(3)
+  resolutionBreachAt DateTime? @db.Timestamptz(3)
+  elapsedMs Float @default(0)
+  runningSince DateTime? @db.Timestamptz(3)
+  legacyBackfill Boolean @default(false)
+}
+enum ArticleVisibility {
+  EMPLOYEE
+  SUPPORT
+}
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+model Article {
+  id String @id @default(uuid())
+  title String
+  markdown String
+  visibility ArticleVisibility @default(EMPLOYEE)
+  status ArticleStatus @default(DRAFT)
+  categoryId String
+  category Category @relation(fields: [categoryId], references: [id])
+  authorId String
+  author User @relation(fields: [authorId], references: [id])
+  version Int @default(0)
+  publishedAt DateTime? @db.Timestamptz(3)
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  // Retrieval index bookkeeping. indexedVersion/indexedModel record exactly what was embedded, so
+  // an article edited after indexing, or indexed by a different embedding model, is detectably stale.
+  indexedVersion Int?
+  indexedModel String?
+  indexedDimensions Int?
+  indexedAt DateTime? @db.Timestamptz(3)
+  indexError String?
+  chunks ArticleChunk[]
+  feedback ArticleFeedback[]
+  @@index([status,visibility,categoryId])
+}
+/// One person's verdict on one article. There is no view counter and no score: an article is
+/// "helpful" only in the sense that named people said so, and each of them counts exactly once.
+model ArticleFeedback {
+  id String @id @default(uuid())
+  articleId String
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  helpful Boolean
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@unique([articleId, userId])
+  @@index([articleId])
+}
+/// One embedded passage of a published article. Chunks are deleted whenever their article changes,
+/// so a stale passage can never be retrieved: the index fails closed rather than serving old text.
+model ArticleChunk {
+  id String @id @default(uuid())
+  articleId String
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleVersion Int
+  chunkIndex Int
+  heading String?
+  content String
+  embedding Float[]
+  embeddingModel String
+  dimensions Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@unique([articleId, chunkIndex, embeddingModel])
+  @@index([embeddingModel, dimensions])
+}
+enum AiOperation {
+  TRIAGE
+  SUMMARY
+  DRAFT_REPLY
+  ANSWER
+  EMBED
+}
+enum AiOutcome {
+  OK
+  TIMEOUT
+  ERROR
+  REFUSED
+  INVALID_OUTPUT
+  RATE_LIMITED
+  INSUFFICIENT_EVIDENCE
+}
+/// Operational metadata only. Deliberately holds no prompt, ticket body, article text or generated
+/// content, so the usage log can never become a back door to restricted material.
+model AiUsage {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  operation AiOperation
+  provider String
+  model String
+  inputTokens Int @default(0)
+  outputTokens Int @default(0)
+  durationMs Int @default(0)
+  outcome AiOutcome
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+enum NotificationKind {
+  ASSIGNMENT
+  PUBLIC_REPLY
+  SLA_RESPONSE
+  SLA_RESOLUTION
+  MENTION
+  WATCHED_UPDATE
+  APPROVAL_REQUESTED
+  APPROVAL_DECIDED
+  SURVEY_REQUEST
+}
+enum DeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+}
+model Outbox {
+  id String @id @default(uuid())
+  dedupeKey String @unique
+  recipientId String
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  ticketId String
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  kind NotificationKind
+  status DeliveryStatus @default(PENDING)
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now()) @db.Timestamptz(3)
+  leaseUntil DateTime? @db.Timestamptz(3)
+  leaseToken String?
+  sentAt DateTime? @db.Timestamptz(3)
+  lastError String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  readAt DateTime? @db.Timestamptz(3)
+  @@index([status,nextAttemptAt])
+  @@index([recipientId, readAt])
+}

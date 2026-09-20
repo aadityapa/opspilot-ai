@@ -1,0 +1,26 @@
+# TLS termination and reverse proxy for OpsPilot.
+# Certificates are obtained and renewed automatically for {$DOMAIN} using {$ACME_EMAIL}.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Security headers the application does not set itself (helmet covers the rest at the app layer).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Metrics stay inside the network; scrape them from a sidecar or over the backend network.
+	@metrics path /metrics
+	respond @metrics 404
+
+	reverse_proxy app:3001 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Request-Id {http.request.uuid}
+	}
+}

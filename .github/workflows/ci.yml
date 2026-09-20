@@ -1,0 +1,98 @@
+name: Verify OpsPilot
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Same image as compose, so CI exercises the migration's pgvector branch too.
+        image: pgvector/pgvector:pg18
+        env:
+          POSTGRES_USER: opspilot
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: opspilot
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U opspilot -d opspilot"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Three databases, as the destructive-write guard requires: the suites refuse to run against
+      # the application database, even in CI.
+      DATABASE_URL: postgresql://opspilot:ci-only-password@localhost:5432/opspilot
+      TEST_DATABASE_URL: postgresql://opspilot:ci-only-password@localhost:5432/opspilot_test
+      E2E_DATABASE_URL: postgresql://opspilot:ci-only-password@localhost:5432/opspilot_e2e_test
+      APP_ORIGIN: http://localhost:5173
+      NODE_ENV: test
+      PGPASSWORD: ci-only-password
+      # No mail transport in CI. Notification tests inject their own sender, so nothing is delivered.
+      MAIL_MODE: disabled
+      # No API key in CI, ever. The AI suites construct the deterministic mock provider directly,
+      # and the browser suite sets AI_MODE=mock itself. Real-provider evaluation is opt-in and
+      # local only: npm run eval:real.
+      AI_MODE: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build
+      - run: createdb -h localhost -U opspilot opspilot_test
+      - run: createdb -h localhost -U opspilot opspilot_e2e_test
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm audit --audit-level=high
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: |
+            playwright-report
+            test-results
+
+  image:
+    # Proves the production image builds and comes up healthy against a database, with no host
+    # ports and no secrets. Nothing is pushed anywhere.
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the production image
+        run: docker build -t opspilot-ai:ci .
+      - name: Start a database and the image, then wait for readiness
+        run: |
+          docker network create ci-net
+          docker run -d --name ci-db --network ci-net \
+            -e POSTGRES_USER=opspilot -e POSTGRES_PASSWORD=ci-only-password -e POSTGRES_DB=opspilot \
+            --health-cmd "pg_isready -U opspilot -d opspilot" --health-interval 3s --health-retries 20 \
+            pgvector/pgvector:pg18
+          for i in $(seq 1 40); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' ci-db)" = healthy ] && break; sleep 3; done
+          docker run -d --name ci-app --network ci-net \
+            -e NODE_ENV=production \
+            -e DATABASE_URL=postgresql://opspilot:ci-only-password@ci-db:5432/opspilot \
+            -e APP_ORIGIN=https://opspilot.example \
+            -e APP_SECRET=ci-only-application-secret-with-more-than-32-characters \
+            -e AI_MODE=disabled -e MAIL_MODE=disabled -e ALLOW_DEMO_SEED=false \
+            opspilot-ai:ci
+          for i in $(seq 1 40); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' ci-app)
+            echo "app: $status"; [ "$status" = healthy ] && exit 0; sleep 3
+          done
+          docker logs ci-app; exit 1
+      - name: Readiness and liveness answer as documented
+        run: |
+          docker exec ci-app curl -fsS http://127.0.0.1:3001/api/health/ready
+          docker exec ci-app curl -fsS http://127.0.0.1:3001/api/health/live
+      - name: Image runs unprivileged and read-only friendly
+        run: |
+          test "$(docker exec ci-app id -u)" != "0"
+          docker exec ci-app node -e "process.exit(require('fs').existsSync('/app/.env') ? 1 : 0)"
+      - if: always()
+        run: docker logs ci-app || true

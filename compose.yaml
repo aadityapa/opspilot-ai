@@ -1,0 +1,63 @@
+name: opspilot
+services:
+  db:
+    # pgvector image: identical to postgres:18 plus the vector extension, which the Phase 3
+    # migration enables when present. Retrieval does not require it (ranking uses an exact SQL
+    # cosine function), but having it available means an approximate index can be added later
+    # without another schema migration.
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_USER: opspilot
+      POSTGRES_PASSWORD: local-only-db-password
+      POSTGRES_DB: opspilot
+    ports:
+      - '127.0.0.1:5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U opspilot -d opspilot']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  # Local email sink. Nothing leaves the machine: Mailpit accepts SMTP on 1025 and shows every
+  # captured message at http://localhost:8025. Both ports are bound to the loopback interface only.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_MAX_MESSAGES: 500
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  app:
+    profiles: ['full']
+    build: .
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://opspilot:local-only-db-password@db:5432/opspilot
+      APP_ORIGIN: http://localhost:5173
+      PORT: 3001
+      WEB_HOST: 0.0.0.0
+      ALLOW_DEMO_SEED: 'false'
+      MAIL_MODE: mailpit
+      MAILPIT_HOST: mailpit
+      MAILPIT_PORT: '1025'
+      # Deterministic offline AI. No credentials are needed to run or demonstrate the container.
+      AI_MODE: mock
+    ports:
+      - '127.0.0.1:5173:5173'
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    command:
+      ['sh', '-c', "npm run db:migrate && npx concurrently -k 'npm:dev:api' 'vite --host 0.0.0.0'"]
+volumes:
+  pgdata:

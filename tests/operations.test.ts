@@ -1,0 +1,23 @@
+import 'dotenv/config';
+import {beforeAll,afterAll,describe,it,expect} from 'vitest';
+import request from 'supertest';
+import {randomUUID} from 'node:crypto';
+import {db} from '../server/db.js';
+import {createApp} from '../server/app.js';
+import {hashPassword} from '../server/password.js';
+import {config} from '../server/config.js';
+if(config.NODE_ENV!=='test'||!new URL(config.DATABASE_URL).pathname.endsWith('_test'))throw new Error('Dedicated test database required');
+const app=createApp(),origin=config.APP_ORIGIN,tag=randomUUID(),password='Synthetic-operations-2026';
+const agents=[request.agent(app),request.agent(app),request.agent(app),request.agent(app)];
+const ids:string[]=[],tokens:string[]=[];let categoryId='',assetId='',ticketId='';
+const assetData={tag:`TEST-${tag.slice(0,8)}`,type:'LAPTOP',manufacturer:'Fictional Systems',model:'Atlas 14',serialNumber:`SYN-${tag}`,ownerId:'',status:'IN_USE',purchaseDate:'2026-01-01',warrantyExpiry:'2029-01-01'};
+function post(i:number,path:string,body:object){return agents[i].post('/api'+path).set('Origin',origin).set('X-CSRF-Token',tokens[i]).send(body);}
+function patch(i:number,path:string,body:object){return agents[i].patch('/api'+path).set('Origin',origin).set('X-CSRF-Token',tokens[i]).send(body);}
+beforeAll(async()=>{const hash=await hashPassword(password);for(const [i,role] of (['EMPLOYEE','EMPLOYEE','ENGINEER','ADMIN'] as const).entries()){const u=await db.user.create({data:{email:`ops-${i}-${tag}@example.test`,name:`Ops fixture ${i}`,passwordHash:hash,role}});ids.push(u.id);const r=await agents[i].post('/api/auth/login').set('Origin',origin).send({email:u.email,password}).expect(200);tokens.push(r.body.csrfToken);}assetData.ownerId=ids[0];categoryId=(await db.category.create({data:{name:`Ops ${tag}`}})).id;});
+afterAll(async()=>{await db.reply.deleteMany({where:{ticket:{categoryId}}});await db.event.deleteMany({where:{actorId:{in:ids}}});await db.ticket.deleteMany({where:{categoryId}});await db.asset.deleteMany({where:{serialNumber:`SYN-${tag}`}});await db.user.deleteMany({where:{id:{in:ids}}});await db.category.deleteMany({where:{id:categoryId}});await db.$disconnect();});
+describe('operations permission boundaries',()=>{
+ it('allows only administrators to create assets, with unique tags',async()=>{await post(0,'/assets',assetData).expect(403);await post(2,'/assets',assetData).expect(403);const r=await post(3,'/assets',assetData).expect(201);assetId=r.body.id;await post(3,'/assets',assetData).expect(409);});
+ it('scopes inventory, detail and employee asset links',async()=>{await agents[0].get(`/api/assets/${assetId}`).expect(200);await agents[1].get(`/api/assets/${assetId}`).expect(404);expect((await agents[1].get(`/api/assets?q=${assetData.tag}`)).body.total).toBe(0);await post(1,'/tickets',{title:'Unauthorized asset link',description:'An employee attempts to link another asset.',categoryId,assetId}).expect(404);const t=await post(0,'/tickets',{title:`Asset ticket ${tag}`,description:'The assigned synthetic laptop will not start.',categoryId,assetId}).expect(201);ticketId=t.body.id;await agents[2].get(`/api/assets/${assetId}`).expect(200);});
+ it('adds internal notes without leaking through public reads or search',async()=>{const secret=`PRIVATE-${tag}`;await post(0,`/tickets/${ticketId}/notes`,{body:secret}).expect(403);await post(2,`/tickets/${ticketId}/notes`,{body:secret}).expect(201);expect((await agents[2].get(`/api/tickets/${ticketId}/notes`)).body[0].body).toBe(secret);for(const path of [`/tickets/${ticketId}`,`/tickets?q=${encodeURIComponent(secret)}`,'/dashboard'])expect(JSON.stringify((await agents[0].get('/api'+path).expect(200)).body)).not.toContain(secret);await agents[0].get(`/api/tickets/${ticketId}/notes`).expect(403);await agents[0].get(`/api/tickets/${ticketId}/events`).expect(403);expect((await db.ticket.findUniqueOrThrow({where:{id:ticketId}})).firstRespondedAt).toBeNull();});
+ it('protects immutable audit paths and redacts an asset after ownership transfer',async()=>{const events=await agents[2].get(`/api/tickets/${ticketId}/events`).expect(200);expect(events.body.some((e:{action:string})=>e.action==='INTERNAL_NOTE')).toBe(true);await patch(2,`/tickets/${ticketId}/events`,{}).expect(404);await patch(3,`/assets/${assetId}`,{version:0,asset:{...assetData,ownerId:ids[1]}}).expect(200);await agents[0].get(`/api/assets/${assetId}`).expect(404);const t=await agents[0].get(`/api/tickets/${ticketId}`).expect(200);expect(t.body.asset).toBeNull();expect(t.body.assetId).toBeNull();const asset=await agents[1].get(`/api/assets/${assetId}`).expect(200);expect(asset.body.tickets).toEqual([]);});
+});

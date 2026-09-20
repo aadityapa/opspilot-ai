@@ -1,0 +1,183 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   OpsPilot design tokens
+   One source of truth for colour, type, spacing, radius, elevation, motion,
+   layers and semantic states. Light is the default; dark is a deliberate
+   palette, not an inversion. Every component and page reads from here.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --fs-display: 2rem;     --lh-display: 2.5rem;   /* 32 / 40 */
+  --fs-h1: 1.75rem;       --lh-h1: 2.125rem;      /* 28 / 34 */
+  --fs-number: 1.75rem;   --lh-number: 2rem;      /* operational numbers 28 / 32 */
+  --fs-h2: 1rem;          --lh-h2: 1.375rem;      /* 16 / 22 */
+  --fs-h3: 0.875rem;      --lh-h3: 1.25rem;       /* 14 / 20 */
+  --fs-body: 0.875rem;    --lh-body: 1.25rem;     /* 14 / 20 */
+  --fs-sm: 0.8125rem;     --lh-sm: 1.125rem;      /* 13 / 18 */
+  --fs-label: 0.6875rem;  --lh-label: 1rem;       /* 11 / 16 */
+  --fs-caption: 0.75rem;  --lh-caption: 1rem;
+  --fs-mono: 0.78rem;
+  --tracking-label: 0.04em;
+
+  /* ── Spacing (4px base) ─────────────────────────────────────────────── */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px;
+  --s8: 32px; --s10: 40px; --s12: 48px; --s16: 64px;
+
+  /* ── Radius ─────────────────────────────────────────────────────────── */
+  --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 999px;
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --t-fast: 150ms cubic-bezier(0.2, 0, 0, 1);
+  --t-med: 220ms cubic-bezier(0.2, 0, 0, 1);
+
+  /* ── Layers ─────────────────────────────────────────────────────────── */
+  --z-sticky: 20; --z-dropdown: 40; --z-drawer: 60; --z-modal: 80; --z-toast: 100; --z-palette: 120;
+
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  --sidebar-w: 240px; --sidebar-w-collapsed: 68px; --header-h: 56px; --content-max: 2200px;
+
+  /* ── Light palette ──────────────────────────────────────────────────── */
+  --bg: #f1f3f7;
+  --surface: #ffffff;
+  --surface-2: #f6f8fb;
+  --surface-3: #eaeef4;
+  --border: #e4e8ee;
+  --border-strong: #c7d0dc;
+  --hairline: rgba(15, 26, 46, 0.06);
+  --text: #0b1526;
+  --text-2: #3f4d63;
+  --text-3: #5a6a84;
+  --violet: #6d4de6; --violet-soft: #efeafd; --violet-text: #4f34b8;
+  --text-inverse: #ffffff;
+
+  --accent: #2457e6;
+  --accent-strong: #1b45c4;
+  --accent-soft: #e9efff;
+  --accent-text: #1b45c4;
+  --cyan: #0e8fa8;
+  --cyan-soft: #e3f5f8;
+  --cyan-text: #0b6478;
+
+  --success: #16843f; --success-soft: #e8f6ec; --success-text: #136b34;
+  --warning: #b7650a; --warning-soft: #fff4e0; --warning-text: #8a4b06;
+  --danger: #c62828;  --danger-soft: #fdecec;  --danger-text: #a12020;
+  --info: #2457e6;    --info-soft: #e9efff;    --info-text: #1b45c4;
+  --neutral: #64748b; --neutral-soft: #eef2f6; --neutral-text: #475569;
+
+  /* Priority: always paired with text (P1–P4), never colour alone. */
+  --p1: #c62828; --p1-soft: #fdecec; --p1-text: #a12020;
+  --p2: #c2410c; --p2-soft: #fff1e8; --p2-text: #9a3412;
+  --p3: #2457e6; --p3-soft: #e9efff; --p3-text: #1b45c4;
+  --p4: #64748b; --p4-soft: #eef2f6; --p4-text: #475569;
+
+  /* Ticket status hues. `-text` is the AA-safe ink on the matching `-soft` background. */
+  --st-open: #2457e6;        --st-open-soft: #e9efff;      --st-open-text: #1b45c4;
+  --st-progress: #6d4de6;    --st-progress-soft: #efeafd;  --st-progress-text: #4f34b8;
+  --st-waiting: #b7650a;     --st-waiting-soft: #fff4e0;   --st-waiting-text: #8a4b06;
+  --st-resolved: #16843f;    --st-resolved-soft: #e8f6ec;  --st-resolved-text: #136b34;
+  --st-closed: #64748b;      --st-closed-soft: #eef2f6;    --st-closed-text: #475569;
+
+  /* Navigation (always dark: the one constant of the OpsPilot identity). */
+  --nav-bg: #0a1424;
+  --nav-bg-2: #0e1b30;
+  --nav-text: #aab7cd;
+  --nav-text-strong: #ffffff;
+  --nav-muted: #6f7f9c;
+  --nav-hover: rgba(111, 156, 255, 0.08);
+  --nav-active: rgba(111, 156, 255, 0.14);
+  --nav-border: rgba(255, 255, 255, 0.06);
+  --nav-accent: #6f9cff;
+
+  /* Elevation */
+  --shadow-sm: none;
+  --shadow-md: 0 6px 16px rgba(15, 26, 46, 0.10), 0 1px 3px rgba(15, 26, 46, 0.06);
+  --shadow-lg: 0 20px 48px rgba(15, 26, 46, 0.16), 0 2px 8px rgba(15, 26, 46, 0.06);
+  --ring: 0 0 0 3px rgba(36, 87, 230, 0.28);
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cfd8e4;
+  --input-placeholder: #8a98ad;
+
+  /* Compatibility aliases used by older modules. */
+  --panel: var(--surface);
+  --muted: var(--text-3);
+  --line: var(--border);
+  --hover: var(--surface-2);
+  --blue: var(--accent);
+  --input: var(--input-bg);
+  --shadow: var(--shadow-sm);
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #080d18;
+  --surface: #0f1728;
+  --surface-2: #152036;
+  --surface-3: #1b2842;
+  --border: rgba(148, 170, 210, 0.12);
+  --border-strong: rgba(148, 170, 210, 0.26);
+  --hairline: rgba(148, 170, 210, 0.08);
+  --violet: #a48cff; --violet-soft: #271f4d; --violet-text: #c3b3ff;
+  --text: #e6ecf6;
+  --text-2: #b3c0d6;
+  --text-3: #8797b3;
+  --text-inverse: #0b1220;
+
+  --accent: #6f9cff;
+  --accent-strong: #8db0ff;
+  --accent-soft: #1a2c52;
+  --accent-text: #9fbcff;
+  --cyan: #4fc3d8;
+  --cyan-soft: #10333c;
+  --cyan-text: #8fe0ee;
+
+  --success: #4ccb76; --success-soft: #11321d; --success-text: #7fe0a0;
+  --warning: #f2b04e; --warning-soft: #3a2a0d; --warning-text: #f5c77a;
+  --danger: #f27272;  --danger-soft: #3d1717;  --danger-text: #f79a9a;
+  --info: #6f9cff;    --info-soft: #1a2c52;    --info-text: #9fbcff;
+  --neutral: #94a3b8; --neutral-soft: #1d2a45; --neutral-text: #b3c0d6;
+
+  --p1: #f27272; --p1-soft: #3d1717; --p1-text: #f79a9a;
+  --p2: #f5a05a; --p2-soft: #3a2410; --p2-text: #f8b97f;
+  --p3: #6f9cff; --p3-soft: #1a2c52; --p3-text: #9fbcff;
+  --p4: #94a3b8; --p4-soft: #1d2a45; --p4-text: #b3c0d6;
+
+  --st-open: #6f9cff;        --st-open-soft: #1a2c52;    --st-open-text: #9fbcff;
+  --st-progress: #a48cff;    --st-progress-soft: #271f4d; --st-progress-text: #c3b3ff;
+  --st-waiting: #f2b04e;     --st-waiting-soft: #3a2a0d;  --st-waiting-text: #f5c77a;
+  --st-resolved: #4ccb76;    --st-resolved-soft: #11321d; --st-resolved-text: #7fe0a0;
+  --st-closed: #94a3b8;      --st-closed-soft: #1d2a45;   --st-closed-text: #b3c0d6;
+
+  --nav-bg: #05090f;
+  --nav-bg-2: #0a1120;
+  --nav-border: rgba(255, 255, 255, 0.05);
+  --nav-hover: rgba(111, 156, 255, 0.08);
+  --nav-active: rgba(111, 156, 255, 0.14);
+
+  --shadow-sm: none;
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --ring: 0 0 0 3px rgba(111, 156, 255, 0.35);
+
+  --input-bg: #0b1322;
+  --input-border: rgba(148, 170, 210, 0.22);
+  --input-placeholder: #7385a3;
+
+  color-scheme: dark;
+}
+
+/* ── Typography classes ───────────────────────────────────────────────── */
+.t-display { font-size: var(--fs-display); line-height: var(--lh-display); font-weight: 650; letter-spacing: -0.02em; color: var(--text); }
+.t-h1 { font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: 650; letter-spacing: -0.02em; color: var(--text); }
+.t-number { font-size: var(--fs-number); line-height: var(--lh-number); font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text); }
+.t-h2 { font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: 650; color: var(--text); }
+.t-h3 { font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: 650; color: var(--text); }
+.t-body { font-size: var(--fs-body); line-height: var(--lh-body); }
+.t-sm { font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.t-label { font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 650; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-3); }
+.t-caption { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--text-3); }
+.t-mono { font-family: var(--font-mono); font-size: var(--fs-mono); letter-spacing: 0.01em; }

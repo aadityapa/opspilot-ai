@@ -1,0 +1,147 @@
+# Production deployment on a single host with Docker Compose.
+#
+#   cp .env.production.example .env.production      # then fill it in
+#   npm run doctor:prod                              # validates .env.production before anything starts
+#   docker compose -f compose.prod.yaml --env-file .env.production up -d --build
+#
+# Shape:
+#   caddy    terminates TLS (automatic certificates from Let's Encrypt for DOMAIN) and is the only
+#            service with published ports.
+#   app      the OpsPilot image, unprivileged, no host ports, health-checked on readiness.
+#   migrate  one-shot: applies migrations with the same image, then exits. `app` waits for it, and
+#            itself starts with SKIP_MIGRATIONS=1 so a replica never runs DDL.
+#   db       PostgreSQL 18 with pgvector, no host ports, data on a named volume.
+#
+# Every secret comes from .env.production, which is git-ignored. Nothing here has a default that
+# would be dangerous if left in place: a missing value fails the deployment rather than weakening it.
+name: opspilot-prod
+
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://opspilot:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}@db:5432/opspilot
+  APP_ORIGIN: https://${DOMAIN:?set DOMAIN in .env.production}
+  APP_SECRET: ${APP_SECRET:?set APP_SECRET in .env.production}
+  PORT: 3001
+  ALLOW_DEMO_SEED: 'false'
+  MAIL_MODE: disabled
+  AI_MODE: ${AI_MODE:-disabled}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gpt-4o-mini}
+  AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-text-embedding-3-small}
+  AI_EMBEDDING_DIMENSIONS: ${AI_EMBEDDING_DIMENSIONS:-1536}
+  MFA_REQUIRED_ROLES: ${MFA_REQUIRED_ROLES:-ADMIN}
+  LOGIN_RATE_LIMIT: ${LOGIN_RATE_LIMIT:-20}
+  LOCKOUT_THRESHOLD: ${LOCKOUT_THRESHOLD:-5}
+  LOCKOUT_MINUTES: ${LOCKOUT_MINUTES:-15}
+  SESSION_HOURS: ${SESSION_HOURS:-8}
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+  LOG_FORMAT: json
+  RETENTION_AUDIT_DAYS: ${RETENTION_AUDIT_DAYS:-365}
+  RETENTION_AI_USAGE_DAYS: ${RETENTION_AI_USAGE_DAYS:-90}
+  RETENTION_OUTBOX_DAYS: ${RETENTION_OUTBOX_DAYS:-30}
+  UPLOAD_DIR: /app/uploads
+  ATTACHMENT_MAX_MB: ${ATTACHMENT_MAX_MB:-10}
+
+services:
+  db:
+    image: pgvector/pgvector:pg18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: opspilot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: opspilot
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U opspilot -d opspilot']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # Only the app network; no ports on the host.
+    networks: [backend]
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  migrate:
+    image: opspilot-ai:${IMAGE_TAG:-latest}
+    build: .
+    environment: *app-env
+    # Preflight first (exit 10 if the database is missing, unreachable or refuses the password), then
+    # apply pending migrations. A missing database is never created here.
+    command: ['sh', '-c', 'node dist/server/preflight.js && node node_modules/prisma/build/index.js migrate deploy']
+    entrypoint: []
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend]
+    restart: 'no'
+
+  app:
+    image: opspilot-ai:${IMAGE_TAG:-latest}
+    build: .
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      SKIP_MIGRATIONS: '1'
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend, edge]
+    read_only: true
+    tmpfs:
+      - /tmp
+    # The only writable path: ticket attachments. Back it up with the database.
+    volumes:
+      - uploads:/app/uploads
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: '20m'
+        max-file: '5'
+
+  caddy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.production}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env.production}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [edge]
+    logging:
+      driver: json-file
+      options:
+        max-size: '20m'
+        max-file: '5'
+
+networks:
+  backend:
+    internal: true
+  edge:
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:
