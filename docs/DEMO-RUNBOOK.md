@@ -19,10 +19,15 @@ out of scope for this release; do not use it for a demonstration.
    ```
    npm.cmd run demo:reset
    ```
-   About six seconds. It empties every application table and re-seeds the fictional organisation,
-   then rebuilds the knowledge index. It refuses to run in production, against a database anywhere
-   but this machine, or if the database holds any account that is not a demo account — so it cannot
-   be pointed at real data by accident.
+   About six seconds. It empties every application table, re-seeds the fictional organisation and
+   rebuilds the knowledge index. It refuses to run in production, against a database anywhere but
+   this machine, or if the database holds any account that is not a demo account, so it cannot be
+   pointed at real data by accident.
+
+   One exception worth knowing: the four **SLA policies** are kept, not restored. If somebody edits
+   a response or resolution target in Administration during a demonstration, `demo:reset` leaves the
+   edit in place. Put it back by hand in *Administration → Service levels* (the defaults are 8 h /
+   72 h Low, 4 h / 24 h Medium, 1 h / 8 h High, 15 min / 2 h Urgent).
 3. **Start OpsPilot.** Double-click **`start.bat`** in the OpsPilot folder. Leave the console window
    open — closing it stops the application. Wait for:
    ```
@@ -54,7 +59,9 @@ out of scope for this release; do not use it for a demonstration.
    middle of a sign-in is the most common avoidable interruption.
 8. **Set the display.** 1920 × 1080, browser zoom at 100 % (**Ctrl + 0**), sidebar expanded, light
    theme. If the room projector runs at 1366 × 768 the layout still holds: every demo screen fits
-   that width without sideways scrolling.
+   that width without sideways scrolling. Do not zoom in past 100 % or drop below about 1300 px of
+   window width — the knowledge article's right-hand column, which carries *Still need help?*, is
+   hidden below that and the script uses it.
 9. **Have the password to hand** but out of sight. It is the `DEMO_PASSWORD` line of `.env`. Never
    put `.env` on the screen and never read it aloud.
 
@@ -136,14 +143,25 @@ seeded material and reset afterwards.
 
 ## Measured on this build
 
-Rehearsed end to end against a freshly reset workspace, twice, with no manual repair between runs:
-the request was created, approved elsewhere, worked, resolved and rated each time, and the second
-run behaved exactly like the first.
+**Rehearsed twice, 20 September 2026**, each time against a freshly reset workspace and with no
+manual repair between the runs: all 23 steps of the script executed — sign in, palette search, the
+article, the service, the form, submission (**OPS-0021** both times), the manager's approval,
+Command Center, the filtered queue, assign and move to in progress, person → department → asset,
+*Analyze ticket*, suggested knowledge, a drafted reply sent, resolution with a summary, the
+employee's notification and a five-star rating, analytics, an SLA report exported as CSV, and the
+audit log. No step needed a retry and no step was skipped.
+
+That rehearsal ran in the project's Linux verification environment, driving the same application
+and the same seeded data through a real browser — **not** on this Windows machine, where the browser
+could not be driven in that session. The Windows path itself (`start.bat`, first run, repeat run and
+a deliberate failure) was validated separately on this host and is recorded in
+[RC1-HOST-VALIDATION.md](RC1-HOST-VALIDATION.md).
 
 Screen render times after warm-up, on a full page load: My Space 279 ms, Command Center 486 ms,
 Service Desk 272 ms, Service Intelligence 993 ms, Reports 275 ms, Knowledge 255 ms. Every demo
 surface was also checked at 1366 × 768 and none scrolls sideways. `demo:reset` takes about six
-seconds, `demo:check` about two.
+seconds; `demo:check` answers in under a second and exits non-zero if anything is missing — after a
+rehearsal it correctly reports that no approval is pending any more, and tells you to reset.
 
 Those measurements come from the project's Linux verification environment running the same
 development server and the same seeded data — **not** from this Windows machine. They are here to

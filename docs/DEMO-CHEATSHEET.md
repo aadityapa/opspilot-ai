@@ -1,7 +1,7 @@
 # OpsPilot demo — one page
 
 **START** Double-click `start.bat` · wait for `OpsPilot is up` · **http://localhost:5173**
-**BEFORE** `npm.cmd run demo:reset` (≈6 s) → `npm.cmd run demo:check` (read-only; prints today's keys)
+**BEFORE** `npm.cmd run demo:reset` (≈6 s) → `npm.cmd run demo:check` (read-only, <1 s; prints today's keys)
 **STOP** Ctrl + C in the OpsPilot console window
 
 ## Sign in — password is the `DEMO_PASSWORD` line of `.env` (never show it)
@@ -37,7 +37,7 @@ notification → **CSAT** → Service Intelligence → report → administration
 | 10:00 | Reply + resolve | "The summary goes to her; the clock stops." |
 | 10:45 | Maya's inbox | "She rates it where she already is." |
 | 11:15 | Analytics | "Command Center: what needs action now. This: how delivery is performing." |
-| 12:00 | Reports | "The rows behind the chart. The CSV is the table." |
+| 12:00 | Reports | "The rows behind the chart. The screen caps at 2,000; the CSV never does." |
 | 12:30 | Admin + audit | "SSO says *not in this release*. We show what exists." |
 | 13:00 | — | "One request touched every part of service operations, and the context was still attached at the end." |
 

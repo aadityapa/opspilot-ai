@@ -73,8 +73,8 @@ services at once. Press **Escape**, then the sidebar **Knowledge** → search bo
 > contents down the side, two-minute read, and a helpfulness vote that is recorded per person."
 
 **HIGHLIGHT** the table of contents · reading time · *3 of 4 people found this helpful* · the
-security warning inside the article · **Still need help?** at the foot, pointing at the right
-service.
+security warning inside the article · **Still need help?** in the right-hand column, pointing at the
+services in the article's own category.
 
 **MESSAGE** Deflection first. OpsPilot tries to answer before it creates work.
 
@@ -86,10 +86,10 @@ service.
 
 **PERSONA** Maya — **SCREEN** Service detail → request form
 
-**CLICK** Foot of the article → **Wi-Fi or VPN problem** → read the service card → **Start
-request**. Fill it: *Where does it happen?* → **Home**; *Since when?* → `this morning`; *Summary* →
-`Cannot connect to the VPN from home`; *Notes for IT* → one sentence saying the article did not fix
-it. → **Review request** → **Submit**.
+**CLICK** *Still need help?* in the article's right-hand column → **Wi-Fi or VPN problem** → read the
+service card → **Start request**. Fill it: *Where does it happen?* → **Home**; *Since when?* →
+`this morning`; *Summary* → `Cannot connect to the VPN from home`; *Notes for IT* → one sentence
+saying the article did not fix it. → **Review request** → **Submit request**.
 
 **SAY**
 
@@ -97,8 +97,9 @@ it. → **Review request** → **Submit**.
 > an incident, it needs no approval, and here is what she'll be asked. Then three steps — details,
 > review, submitted — and a request number she can quote.
 >
-> Notice what she was never asked. No priority. No SLA. No assignment group. Priority came from the
-> impact-and-urgency matrix the organisation configured; the clock started on submission."
+> Notice what she was never asked. No priority. No SLA. No assignment group. This service carries
+> its own priority, set once by whoever configured the catalog, so every report of it starts with
+> the same target — and the clock started on submission."
 
 **HIGHLIGHT** *Incident · No approval needed* on the service card · the three-step progress · the
 review screen · the request key on the confirmation (**OPS-0021** on a freshly reset workspace).
@@ -106,8 +107,10 @@ review screen · the request key on the confirmation (**OPS-0021** on a freshly 
 **MESSAGE** The employee describes the problem. OpsPilot does the classification.
 
 *Optional, 15 seconds, if the room is interested in deflection:* go back and take **Report an IT
-issue** instead — the free-text path. As you type the title, a **This might help first** panel
-appears above the form with the matching articles. Say: "even when somebody insists on writing a
+issue** instead — the free-text path. As you type the title and description, a **This might help
+first** panel appears underneath them with the matching articles, and this is the path where the
+employee is asked how many people are affected and how quickly it is needed — the impact and urgency
+that the priority matrix turns into a priority. Say: "even when somebody insists on writing a
 ticket, we put the answer in front of them first." Then return to the catalog path.
 
 ---
@@ -124,8 +127,8 @@ ticket, we put the answer in front of them first." Then return to the catalog pa
 > status code. That single line, 'IT investigates and keeps you posted', is the difference between a
 > person chasing IT and a person getting on with their job."
 
-**HIGHLIGHT** status and next step · the service level panel in the employee's language · the linked
-device.
+**HIGHLIGHT** status and next step · the service level panel in the employee's language — *first
+reply*, *completion*, no countdown timers · who is involved.
 
 **MESSAGE** Transparency without operational jargon.
 
@@ -136,20 +139,22 @@ device.
 **PERSONA** Jordan Patel, administrator and the manager of IT and Engineering — **SCREEN** Approval
 Center (window B)
 
-**CLICK** Sign in as Jordan → the **Approvals** badge shows **1** → **Needs my approval** → **Review**
-on *Replacement laptop for Noah Williams* → read the business justification → **Approve** → confirm.
+**CLICK** Sign in as Jordan → sidebar **Approvals** → the **Needs my approval** tab shows **1** →
+**Review** on *Replacement laptop for Noah Williams* → read the business justification → **Approve**
+→ confirm in the dialog.
 
 **SAY**
 
 > "Maya's incident needed no approval, and OpsPilot said so up front rather than inventing a step.
 > A laptop purchase is different. Noah asked for one two days ago, and because the catalog routes
-> that service to the requester's manager, it is sitting with Jordan — with the business
+> that service to the requester's own manager, it is sitting with Jordan — with the business
 > justification, the model, the date it is needed by, and the request it belongs to.
 >
 > One decision, one click, recorded with his name and the time."
 
-**HIGHLIGHT** the badge is a real count · the request context in the review dialog · *Approve* /
-*Reject* with an optional note · the confirmation naming what happens next.
+**HIGHLIGHT** the tab count is the real number of decisions waiting · the request context in the
+review dialog · *Approve* / *Reject* with an optional note · the confirmation naming what happens
+next.
 
 **MESSAGE** Governance where the workflow calls for it, and nowhere else.
 
@@ -232,14 +237,15 @@ so two engineers cannot silently overwrite each other.
 
 **PERSONA** Alex — **SCREEN** Person → Department → Asset
 
-**CLICK** In the ticket header, click **Maya Chen** → on her profile, click **Engineering** → then
-**Assets** → **LAP-0001**.
+**CLICK** In the ticket header, click **Maya Chen** → on her profile, click **Engineering** →
+browser **back** to her profile → the **Assets** tab → **LAP-0001**.
 
 **SAY**
 
 > "Who is asking. What else they have open. Which department carries the demand, and who manages it
-> — which is why Jordan approved Noah's laptop a moment ago. And the actual device, with its
-> warranty and its own service history, including this ticket.
+> — Jordan, the same person who approved a laptop a moment ago, because approvals follow the
+> requester's own manager. And the actual device, with its warranty and its own service history,
+> including this ticket.
 >
 > I'm moving fast on purpose. The value isn't any one of these screens. It's that the issue, the
 > person, the organisation and the hardware are one connected record, three clicks apart."
@@ -350,9 +356,11 @@ ranking.
 **SAY**
 
 > "Analytics is for understanding. Reports is the evidence underneath it: the same filters, the rows
-> behind the chart, and a CSV that is exactly the table on screen — not an approximation of it."
+> behind the chart, and an export that carries every one of them. The screen stops at two thousand
+> rows and says so; the CSV is never truncated."
 
-**HIGHLIGHT** the same filter set as analytics · summary and detail together · the downloaded file.
+**HIGHLIGHT** the same filter set as analytics · summary and detail together · the downloaded file
+(`opspilot-sla-30d-<date>.csv`).
 
 **MESSAGE** Every chart can be traced back to rows.
 
@@ -365,7 +373,9 @@ ranking.
 **PERSONA** Jordan — **SCREEN** Administration
 
 **CLICK** Sign in as Jordan (window B) → **Administration** → glance at **Accounts & access**,
-**Roles & permissions**, **Workflow**, **Security** → **Audit log**, filtered to today.
+**Roles & permissions**, **Workflow**, **Security** → **Audit log**. Newest first, so the last
+quarter of an hour is at the top; use the action filter for *AI*, then *Tickets*, to pick the story
+out.
 
 **SAY**
 
@@ -396,9 +406,9 @@ the audit trail of the last thirteen minutes.
 > with the person, the department and the device attached, reviewed AI assistance, resolution,
 > a satisfaction rating, service analytics, an exportable report and a governance trail.
 >
-> In most organisations that is five products and three integrations. Here it is one operating
-> environment — which is why the context is still attached at the end of the journey. That is the
-> whole argument for OpsPilot."
+> Nobody re-entered anything, nothing was copied between systems, and the context was still attached
+> at the end of the journey — because it is one operating environment rather than a set of tools
+> pointed at each other. That is the whole argument for OpsPilot."
 
 Stop. Take questions.
 
@@ -428,8 +438,8 @@ it runs in mock mode — deterministic, no external call.
 **"Does it integrate with <our tool>?"** There are no productised integrations in this release. The
 API is documented ([API.md](API.md)) and the data model is open.
 
-**"How does it scale?"** Measured on a 10,000-ticket dataset: list queries under 100 ms, analytics
-under 0.6 s, the Command Center summary under 100 ms ([RC-AUDIT.md](RC-AUDIT.md) §8). The demo
+**"How does it scale?"** Measured on a 10,000-ticket dataset: list queries 42 ms, analytics 0.58 s,
+the Command Center summary 60 ms ([RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md), row 21). The demo
 workspace is deliberately small so the story stays followable.
 
 **"What happens when something fails?"** Worth showing if asked: turn off the network on the
