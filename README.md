@@ -333,7 +333,12 @@ release-candidate hardening — audit, findings, fixes, what was and was not ver
 [docs/RC-AUDIT.md](docs/RC-AUDIT.md), [docs/RC1-CHANGES.md](docs/RC1-CHANGES.md) and
 [docs/RELEASE-CHECKLIST.md](docs/RELEASE-CHECKLIST.md); operating it is
 [docs/OPERATIONS-RUNBOOK.md](docs/OPERATIONS-RUNBOOK.md), [docs/BACKUP-RESTORE.md](docs/BACKUP-RESTORE.md)
-and [docs/SECURITY.md](docs/SECURITY.md); the sales demo is [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
+and [docs/SECURITY.md](docs/SECURITY.md). The sales demonstration is
+[docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md) (13½ minutes, one story), with
+[docs/DEMO-RUNBOOK.md](docs/DEMO-RUNBOOK.md) for the operator and
+[docs/DEMO-CHEATSHEET.md](docs/DEMO-CHEATSHEET.md) for the table: `npm.cmd run demo:reset` puts the
+workspace back, `npm.cmd run demo:check` confirms the story is there without changing anything, and
+the sales screenshot set is in [docs/screenshots/demo/](docs/screenshots/demo/).
 
 The GitHub Actions workflow runs locked install, generation, build, integration tests, Chromium tests, and dependency audit using PostgreSQL. Push this repository root to GitHub to run it; the workflow has not been executed on GitHub in this session.
 
@@ -397,7 +402,8 @@ the owner's direction. See [DEPLOYMENT.md](docs/DEPLOYMENT.md) and
 | [RETRIEVAL.md](docs/RETRIEVAL.md) | How ranking works, measured latency, the pgvector migration path |
 | [EVALUATION.md](docs/EVALUATION.md) | The evaluation set, release criteria and what the scores mean |
 | [SECURITY.md](docs/SECURITY.md) | Security decisions and stated limitations |
-| [API.md](docs/API.md) · [DEMO.md](docs/DEMO.md) · [ROADMAP.md](docs/ROADMAP.md) | Endpoints, demo script, phase history |
+| [API.md](docs/API.md) · [DEMO.md](docs/DEMO.md) · [ROADMAP.md](docs/ROADMAP.md) | Endpoints, full product walkthrough, phase history |
+| [DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md) · [DEMO-RUNBOOK.md](docs/DEMO-RUNBOOK.md) · [DEMO-CHEATSHEET.md](docs/DEMO-CHEATSHEET.md) | The sales demonstration: the script, the operator's runbook, the one-pager |
 
 **Not implemented:** attachments; article version history and rich-text editing; business-hours SLA calendars; per-category assignment rules; full accessibility audit; AWS/Terraform deployment; persisted AI answer history (deliberately omitted — storing answers would outlive the permissions of their sources unless revocation were implemented, which is out of scope here); pgvector index-backed ranking. No UI claims these features work.
 

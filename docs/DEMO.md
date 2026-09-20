@@ -1,5 +1,10 @@
 # Demo guide
 
+**For a sales demonstration, use [DEMO-SCRIPT.md](DEMO-SCRIPT.md) (13½ minutes, one story),
+[DEMO-RUNBOOK.md](DEMO-RUNBOOK.md) (what the operator does around it) and
+[DEMO-CHEATSHEET.md](DEMO-CHEATSHEET.md) (the page you keep beside the laptop).** This file is the
+longer walkthrough: every module, for a technical reviewer who wants to see the whole product.
+
 Everything in the demo workspace is fictional and labelled as such in the footer of every page.
 Before starting: `start.bat` (or `npm.cmd run setup` then `npm.cmd run dev:local`), and keep the
 password from the `DEMO_PASSWORD` line of your `.env` to hand — it is generated on your machine and
@@ -20,8 +25,9 @@ given; the four accounts above are the only ones that can sign in.
 
 ## One repeatable journey (about twelve minutes)
 
-The same twenty-four steps work every time on a freshly seeded database. Re-seed with
-`npm.cmd run seed` if a previous run left the data changed.
+The same twenty-four steps work every time on a freshly seeded database. Put it back with
+`npm.cmd run demo:reset` if a previous run left the data changed, and confirm the story is there
+with `npm.cmd run demo:check` (read-only).
 
 **Employee — Maya**
 

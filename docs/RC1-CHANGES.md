@@ -199,3 +199,52 @@ No assertion was weakened and no test was deleted.
   lazy-loading the MFA path.
 - Attachment upload writes the file before the row; a failed insert leaves an orphan file (harmless,
   not reclaimed). Documented in the runbook.
+
+## After v2.0.0-rc1 — demo preparation
+
+**These changes are not in the `v2.0.0-rc1` tag.** They were made while preparing the native
+Windows sales demonstration, on `main` ahead of the tag, and belong to whatever release candidate
+comes next. The tag was not moved.
+
+### 22. Suggested knowledge never matched anything — P2
+
+**Problem.** `SuggestedArticles` built its query by joining the first four words longer than three
+characters ("disconnects during video calls") and the article search matches its query as one
+substring, so the query could only match an article containing that exact sentence. The result:
+the **Suggested knowledge** panel on every ticket and the **This might help first** panel on the
+issue form were permanently empty, under a caption saying they were "matched from the ticket's own
+words". Three-letter acronyms — `VPN`, `SSO`, `MFA`, `DNS` — were also thrown away by the length
+filter, and they are the most identifying words an IT request contains. **Fix.** `shared/search.ts`
+extracts candidate terms (acronyms first, then longest), and the panel tries them one at a time,
+stopping at the first that finds anything — usually one request. **Test.** `tests/demo.test.ts`
+"search terms" (7 cases). **Verified.** The VPN ticket now suggests *Reconnect to the company VPN*;
+axe reports 0 violations on the ticket workspace and the issue form with the panels populated.
+**Files.** `shared/search.ts` (new), `web/catalog.tsx`, `web/ticket.tsx`.
+
+### 23. demo:reset guard conditions were inline and untested — P3
+
+**Change.** The conditions under which the demo workspace may be erased moved into
+`scripts/demo-guard.ts` as a pure function, unchanged in behaviour, and are now pinned by
+`tests/demo.test.ts` "demo:reset guard" (6 cases: production, `ALLOW_DEMO_SEED`, `DEMO_PASSWORD`,
+a non-local host, a database holding real accounts — and that the refusal never echoes the URL).
+**Files.** `scripts/demo-guard.ts` (new), `scripts/demo-reset.ts`.
+
+### 24. `npm run demo:check` — new, read-only
+
+Thirteen checks before a demonstration: API live and ready, database reachable, the four personas
+usable, no non-demo account present, the opening ticket, a genuinely pending approval, the knowledge
+article and its index, the asset and its owner, no orphaned people or personal devices, dashboards
+with something to show, and something resolved inside the Command Center's default window. It counts
+and reads; it writes nothing, and it prints no password or database URL. **Files.**
+`scripts/demo-check.ts` (new), `package.json`.
+
+### 25. Demo seed corrections — data only
+
+Four resolved tickets re-timed into the last seven days, so the Command Center's default window
+shows a real MTTR (12h 00m), CSAT (4.50) and resolved-versus-created flow instead of dashes and
+zeroes. Three notification rows removed or made true: the requester was being told "a ticket has
+been assigned to you" and "a ticket you follow was updated" (she is the requester, not the assignee
+or a watcher), and one claimed an approval decision on a ticket that has no approval. The seeded
+reply that the remaining "you were mentioned" notification refers to now actually names her, stored
+as a mention relation the way the reply endpoint stores one. No behaviour changed; every seeded
+notification now describes something that exists. **Files.** `prisma/demo-story.ts`.
