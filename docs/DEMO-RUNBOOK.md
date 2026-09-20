@@ -167,3 +167,53 @@ Those measurements come from the project's Linux verification environment runnin
 development server and the same seeded data — **not** from this Windows machine. They are here to
 say that nothing in the demonstration makes an audience wait; treat the Windows numbers as
 "similar", and if you want certainty, watch the clock during your own warm-up pass.
+
+---
+
+## Native Windows walkthrough — 20 September 2026
+
+The whole script was then walked, beat by beat, **on the presentation machine**: Windows 10 Pro, the
+native Node and local PostgreSQL started by `start.bat`, and the workspace driven through Chrome on
+that machine. It took **10 minutes 54 seconds** end to end at a continuous clip with three persona
+switches, which is the click path alone — narrated at the pace in the script it lands in the 13–15
+minute range.
+
+Every beat passed, first time, with no retry and no workaround:
+
+| Beat | Result on Windows |
+| --- | --- |
+| Sign-in page | Brand, hero, sign-in card; no broken asset, no console noise, no debug text |
+| Employee My Space | Greeting, attention count, My Work strip, For you, My requests, announcements |
+| Palette search `vpn` | Ticket, two articles and the service, in one list |
+| Knowledge article | Full article, 2 min read, *3 of 4 people found this helpful*, *Still need help?* |
+| Service detail | *No approval needed*, *Incident · Network*, *What you'll need* |
+| Request form → review → submit | Three steps, real key issued, form answers carried onto the ticket |
+| My requests | New request with *IT picks it up next* |
+| Manager approval | Tab count 1 → review dialog → Approve → confirmation → *moved to IT fulfilment* |
+| Command Center | Pulse, global health, service areas, needs-attention, ticket flow |
+| Drill into the queue | *Assign owners* → Service Desk filtered, filter in the URL, new ticket on top |
+| Ticket workspace | Context, conversation, SLA with the policy snapshot, **suggested knowledge populated** |
+| Person → department → asset | Profile, Engineering, then the Assets tab and LAP-0001 with its history |
+| Ask OpsPilot | Triage with reasons, applied after review; audit recorded the named human |
+| Reply and resolve | Draft copied, reply sent, resolved in 5 min, SLA **Met**, CSAT awaiting |
+| Employee notification and CSAT | *Rate your request* in the inbox, five stars stored and shown back |
+| Service Intelligence | Satisfaction 4.50 over 6 ratings, the new request visible in demand by service |
+| Reports and CSV | SLA performance with the new ticket at the top; export returned 200 and 21 rows |
+| Administration and audit | Six areas; the audit log listed the whole journey, newest first |
+
+**What that walkthrough did not cover, and why.** The Windows session would not accept synthetic
+mouse or keyboard input that day, so no Command Prompt could be opened: `demo:reset` and
+`demo:check` were **not** run on this machine, `start.bat` was **not** launched in that session (the
+application was already running from an earlier one), and the walkthrough therefore ran against a
+workspace that had not been reset first. Repeatability on Windows — reset, rehearse, reset, rehearse
+again — is still unproven on this host. It is proven in the Linux environment, where both runs were
+identical.
+
+**Consequence for the next person who sits down:** this workspace is mid-story. The pending approval
+has been decided, and an extra ticket has been created, resolved and rated. Run
+`npm.cmd run demo:reset` and then `npm.cmd run demo:check` before any demonstration — which is step
+2 of *Before the demo* regardless.
+
+One presentation nit seen on the day: after signing out, Chrome leaves the last e-mail address in
+the sign-in field. Clear it, or open a fresh window, so the first thing an audience sees is an empty
+form.
