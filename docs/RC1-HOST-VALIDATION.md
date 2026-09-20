@@ -84,6 +84,16 @@ docker compose -f compose.prod.yaml up -d --force-recreate app   # then download
 docker compose -f compose.prod.yaml stop app           # expect exit 0 and a clean shutdown log
 ```
 
+**Second attempt, 20 September 2026, 11:25 local.** The Docker gates were requested again and the
+host was re-checked with the repository at the exact release candidate (`78d7049`, clean tree).
+Result unchanged — Docker is absent: `where docker` finds nothing; `C:\Program Files\Docker\Docker\
+Docker Desktop.exe` and `…\resources\bin\docker.exe` do not exist; no docker or containerd service
+or process is running; `podman`, `nerdctl` and `rancher-desktop` are not present; WSL reports no
+installed distributions. Only leftover data folders remain from an earlier install
+(`C:\ProgramData\DockerDesktop`, `%LOCALAPPDATA%\Docker`, `%USERPROFILE%\.docker`), which contain no
+engine. Disk space is not the constraint: 666.6 GB free of 930.9 GB. Nothing was built, started or
+marked as passed.
+
 ### Result — DOCKER PRODUCTION STACK: NOT EXECUTED
 
 ## Upload persistence
@@ -162,18 +172,36 @@ tickets, 28 assets, 11 knowledge articles (the previous database had 0), 5 depar
 | Accessibility | not re-run — no interface code changed in this phase | 18 RC states, 0 violations (previous run) |
 | Backup / restore | backup on the release host: PASS (84.5 MB); restore path unchanged since the earlier file-level test | file-level backup→restore round trip: PASS |
 
+## Scope decision for RC1
+
+Asked twice whether to run the container gates on a Docker-capable machine or to re-scope, the
+release owner directed that Docker **not** be used for this release candidate. RC1 is therefore
+scoped to the **native deployment** — the Windows/Node path exercised above, which is what the pilot
+and the sales demo will run.
+
+What that means, stated plainly so nobody is misled:
+
+- Checklist rows 15 and 17 are **out of scope for RC1**, not passed. They remain open for the first
+  release that ships containers.
+- `compose.prod.yaml`, the `Dockerfile`, `docker/entrypoint.sh` and the Caddy configuration ship
+  **unverified**: reviewed line by line, never built or run. `docs/DEPLOYMENT.md` says so at the top.
+- Nothing about container behaviour — image build, the migrate job, volume persistence, SSE through
+  Caddy, container shutdown — is claimed anywhere in this release's documentation.
+
+The native path, by contrast, is validated end to end on the release host: startup, repeat startup,
+failure handling, database persistence, upload persistence across an application restart, and the
+full automated suites (364 API/unit tests, 35 browser tests) running on this machine.
+
 ## Final decision
 
-# NOT READY FOR RC1
+# READY FOR RC1 — native deployment scope
 
-Windows startup passes on the release host, and the code now passes its full suites there — but two
-of the three blocking rows (Docker production stack, uploads across container recreation) were not
-executed, because Docker is not installed and the owner chose not to use it. The brief's criteria
-for declaring RC1 require all three. No tag was created.
+Every gate inside the agreed scope passes on the release host: Windows startup (first run, repeat
+run, preflight failure), database and upload persistence across an application restart, 364/364 API
+and unit tests, 35/35 browser tests, a clean build, and `npm audit` at zero. No P0 or P1 defect is
+open; the two P1s found during this validation were fixed and re-verified here.
 
-Two ways forward, both the owner's call:
-
-1. Run the Docker rows on a machine that has Docker (commands above), then tag.
-2. Re-scope RC1 to the non-container deployment. That is a deliberate decision to make and record:
-   rows 15 and 17 would be marked out of scope, and `docs/DEPLOYMENT.md` would have to state that the
-   container path ships unverified.
+Outside scope and explicitly **not** claimed: the Docker production stack (row 15) and upload
+persistence across application-container recreation (row 17). Before OpsPilot is deployed as
+containers, those two rows must be executed on a Docker-capable host — the exact commands are in
+the Docker section above.

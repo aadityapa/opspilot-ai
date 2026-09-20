@@ -380,6 +380,14 @@ change summary, test evidence, limitations and next steps are in
 
 ## Security, limitations and next phases
 
+**Release candidate v2.0.0-rc1 is scoped to the native Windows/Node deployment.** It was validated
+on a real release host — startup, repeat startup, failure handling, database and upload persistence,
+364 API/unit tests and 35 browser tests all passing there. The container deployment
+(`compose.prod.yaml`, `Dockerfile`, Caddy) **ships unverified**: reviewed but never built or run, at
+the owner's direction. See [DEPLOYMENT.md](docs/DEPLOYMENT.md) and
+[RC1-HOST-VALIDATION.md](docs/RC1-HOST-VALIDATION.md).
+
+
 | Document | What it covers |
 | --- | --- |
 | [SETUP.md](docs/SETUP.md) | Complete Windows setup, host vs container addressing, troubleshooting |

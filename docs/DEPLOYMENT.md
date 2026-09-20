@@ -1,5 +1,14 @@
 # Production deployment
 
+> **RC1 status: this container path ships unverified.** The release candidate v2.0.0-rc1 was
+> validated on the native Windows/Node deployment only — the release owner elected not to use Docker
+> for it. Everything in this file has been reviewed line by line, and the application it runs is the
+> same code that passes 364 API/unit tests and 35 browser tests, but **no image here has ever been
+> built or run**. Treat it as a design you must validate before you rely on it: work through rows 15
+> and 17 of [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) on a Docker-capable host, then record the
+> result in [RC1-HOST-VALIDATION.md](RC1-HOST-VALIDATION.md).
+
+
 A single-host deployment with Docker Compose: TLS at the edge, the application unprivileged and
 port-less behind it, PostgreSQL on a private network. It is the smallest arrangement that is
 defensible to run for real; it is not a high-availability design, and it does not pretend to be.

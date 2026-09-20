@@ -1,5 +1,9 @@
 # Release checklist — v2.0.0-rc1
 
+**Scope of v2.0.0-rc1: the native Windows/Node deployment.** The container path (rows 15 and 17) is
+out of scope at the owner's direction and ships unverified — see
+[RC1-HOST-VALIDATION.md](RC1-HOST-VALIDATION.md), "Scope decision for RC1".
+
 Each row names the command, the result that counts as green, and the RC1 status. "Verified" means
 executed in this hardening phase with the output observed; "inspected" means read but not run in
 the verification environment (say so when presenting); "on your host" means the reader must run it
@@ -22,9 +26,9 @@ where the release will live.
 | 12 | `npm audit` | `npm audit --audit-level=high` | 0 vulnerabilities | Verified |
 | 13 | Backup | `npm run db:backup` | file written, no password on the command line | Verified **on the release host** (84.5 MB archive of the live cluster, 20 Sep 2026) after fixing a quoting defect that broke any path containing a space (RC1-CHANGES #19); pg_dump path still inspected only |
 | 14 | Restore | `npm run db:restore -- <file> --confirm`, then §Verify in BACKUP-RESTORE.md | counts and a marker row back to the backup | Verified (file-level path, Linux); the same quoting fix applies to `restore.mjs`, not re-run on the host |
-| 15 | Docker production | `docker compose -f compose.prod.yaml --env-file .env.production up -d --build`; health, login, ticket, upload, download, SSE, `restart app`, `rm -f app && up -d`, download again, `stop` | all pass; the file survives container recreation; exit 0 on stop | **NOT EXECUTED.** Docker is not installed on the release host (verified 20 Sep 2026: no CLI, no Docker Desktop, no WSL distro) and the owner elected not to use Docker. Configuration inspected only — see [RC1-HOST-VALIDATION.md](RC1-HOST-VALIDATION.md) |
+| 15 | Docker production | see [DEPLOYMENT.md](DEPLOYMENT.md) | stack builds, migrates, serves, persists | **OUT OF SCOPE for RC1.** The release owner scoped this candidate to the native deployment and elected not to use Docker; the host has no container engine (checked twice, 20 Sep 2026). Not passed, not claimed — open for the first container release |
 | 16 | Windows startup | `start.bat` from the folder and through the Windows shell; second run; a preflight failure | application reachable and signed into; second run neither resets nor duplicates data; failure exits 10, creates no database, prints no secret | **PASS on the release host, 20 Sep 2026** — evidence in [RC1-HOST-VALIDATION.md](RC1-HOST-VALIDATION.md) |
-| 17 | Upload persistence | part of 15 | same bytes after `restart` and after container recreation | **NOT EXECUTED** (needs Docker). Related evidence on the host: ticket #67, `rc1-upload-persistence.txt` (44 bytes) uploaded, the application stopped and restarted, and the same sha256 downloaded back — an application restart, not container recreation |
+| 17 | Upload persistence across container recreation | part of 15 | same bytes after the app container is recreated with the volume kept | **OUT OF SCOPE for RC1** (needs Docker). Native equivalent **passed** on the host: ticket #67, `rc1-upload-persistence.txt` (44 bytes), application stopped and started, identical sha256 downloaded back |
 | 18 | SSE | reconnect after API restart; live update while typing; shutdown with an open stream | draft/URL/tab intact; `event: bye` then reconnect; API exits 0 in < 1 s | Verified |
 | 19 | Permissions | `npm test` (permissions matrix + `rc-security`) | every route documented; every object-level case refused | Verified |
 | 20 | Security review | [SECURITY.md](SECURITY.md) read against the code; headers checked in production mode | matches | Verified (no external pentest) |
@@ -32,7 +36,7 @@ where the release will live.
 | 22 | Screenshots | `docs/screenshots/v2/p5-*.png` (final product), `docs/screenshots/rc/` (1366 + failure states) | present, current | Verified |
 | 23 | Documentation | README, SETUP, API, PERMISSIONS, SECURITY, OPERATIONS-RUNBOOK, BACKUP-RESTORE, DEPLOYMENT, DEMO-SCRIPT, RC-AUDIT, RC1-CHANGES | match the code | Verified |
 | 24 | Known limitations | README "Known limitations", SECURITY "Known security limitations", RC-AUDIT | stated, none faked | Verified |
-| 25 | Version | `package.json` `2.0.0-rc.1`; tag `v2.0.0-rc1` only after 15–17 are green on the release host | | **Not tagged** — rows 15 and 17 were not executed |
+| 25 | Version and tag | `package.json` 2.0.0-rc.1; tag after every in-scope row is green | | 2.0.0-rc.1; RC1 is scoped to the native deployment (rows 15 and 17 out of scope) |
 
 The host validation of 20 September 2026 is recorded in
 [RC1-HOST-VALIDATION.md](RC1-HOST-VALIDATION.md), including the two P1 defects it found and fixed.
@@ -45,6 +49,5 @@ npm run build
 npm test
 npm run test:e2e
 npm audit --audit-level=high
-docker compose -f compose.prod.yaml --env-file .env.production up -d --build   # then rows 15–17
 git tag -a v2.0.0-rc1 -m "OpsPilot V2 release candidate 1"
 ```
