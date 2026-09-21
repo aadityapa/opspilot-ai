@@ -48,7 +48,7 @@ Neither is a fault in the application.
 | # | Check | Result | Evidence |
 | --- | --- | --- | --- |
 | 3 | Application reachable on the Windows host | **PASS** | Windows host: `/api/health/live` 200, `/api/health/ready` `{"status":"ready","checks":{"notShuttingDown":"ok","database":"ok","migrations":"ok"}}`, web served on 5173 |
-| 4 | `start.bat` launched in this pass | **NOT EXECUTED** | No shell on the Windows host. The instance under test was already running from an earlier session. `start.bat` first run, repeat run and a deliberate failure were validated on this host in the RC1 phase — see [RC1-HOST-VALIDATION.md](RC1-HOST-VALIDATION.md) |
+| 4 | `start.bat` first run | **PASS** — 21 September 2026 | Windows host, launched through the shell the way a double-click does, from a cold machine with nothing listening on 3001, 5173 or 5433. Log captured: `Node 24 found` → `Settings are valid: NODE_ENV=development, database at 127.0.0.1:5433, origin http://localhost:5173, AI mock, mail disabled` → `Starting the local database…` → `Local database ready on 127.0.0.1:5433` → API `listening` on 3001 → Vite on 5173 → `OpsPilot is up at http://localhost:5173`. No credential appears anywhere in the output |
 | 5 | Stop and restart on the Windows host | **NOT EXECUTED** | Same reason. Validated on this host in the RC1 phase: identical row counts before and after, no re-seed, no re-migration |
 | 6 | Configuration failure is refused | **NOT EXECUTED on Windows** in this pass; **PASS** in the RC1 phase on this host (exit 10, no database created, no secret printed) |
 | 7 | Production must fail fast on missing configuration | **PASS** | `server/config.ts` exits 12 naming the setting and never its value; `tests/preflight.test.ts` and the RC1 host run pin it |
@@ -122,8 +122,8 @@ Neither is a fault in the application.
 
 | # | Check | Result | Evidence |
 | --- | --- | --- | --- |
-| 51 | `demo:reset` on Windows | **NOT EXECUTED** | No shell on the release host |
-| 52 | `demo:check` on Windows | **NOT EXECUTED** | Same |
+| 51 | `demo:reset` on Windows | **NOT EXECUTED** | Attempted 21 September from a real Windows console **before** the application was started, and it failed correctly: the local database was not running, so `db.user.count()` could not reach 127.0.0.1:5433 (exit 1, nothing changed). That is the documented order in the runbook being wrong, not the script — the runbook now says start first, reset second. The reset itself has still not been executed on this host |
+| 52 | `demo:check` on Windows | **NOT EXECUTED** | Blocked behind row 51 |
 | 53 | Final Windows walkthrough after the production checks | **NOT EXECUTED** in this pass | A complete walkthrough was performed on this host on 20 September 2026 in 10 min 54 s, every beat passing — [DEMO-RUNBOOK.md](DEMO-RUNBOOK.md), *Native Windows walkthrough* |
 | 54 | Final clean reset | **NOT EXECUTED** | The Windows demo workspace is mid-story and needs `npm.cmd run demo:reset` before it is shown to anyone |
 
@@ -150,12 +150,22 @@ Neither is a fault in the application.
 2. **Five Windows-only gates unexecuted** (rows 4, 5, 6, 51, 52, 54). They need a Command Prompt on
    the release machine — two commands and one double-click, once the desktop accepts input.
 
-**P2** — none open.
+**P2**
+
+3. **The runbook told the operator to reset before starting.** On a machine that has just been
+   switched on that cannot work — `start.bat` is what starts the local database, so `demo:reset`
+   fails with "Can't reach database server at 127.0.0.1:5433". Found on Windows on 21 September by
+   running the documented order. Fixed in [DEMO-RUNBOOK.md](DEMO-RUNBOOK.md): start first, reset
+   second, check third. Documentation only; no script changed.
 
 **P3**
 
 - After signing out, Chrome leaves the last e-mail address in the sign-in field; clear it before an
   audience sees the first screen. Noted in the demo runbook.
+- With the database down, `demo:reset` reports the failure as a raw Prisma stack trace rather than
+  the one-sentence message `start.bat` gives for the same condition. Cosmetic, in a convenience
+  script, and not worth a product change before release — but it is the reason the ordering mistake
+  above read as alarming rather than obvious.
 
 ## Known limitations (unchanged, and all documented)
 

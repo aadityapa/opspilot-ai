@@ -15,7 +15,20 @@ out of scope for this release; do not use it for a demonstration.
 **The evening before, or at least an hour ahead**
 
 1. **Power.** Plug the laptop in. Set the screen and sleep timeout long enough to cover the meeting.
-2. **Reset the demo data** — this is the step that makes the demonstration repeatable:
+2. **Start OpsPilot first.** Double-click **`start.bat`** in the OpsPilot folder. Leave the console
+   window open — closing it stops the application. Wait for:
+   ```
+   OpsPilot is up at http://localhost:5173
+   ```
+   A first run on a new machine sets things up and can take a few minutes. A normal start is well
+   under a minute.
+
+   **This has to come before the reset.** `start.bat` is what starts the local database. On a
+   machine that has just been switched on, running `demo:reset` first fails — it cannot reach
+   PostgreSQL on 127.0.0.1:5433, and it says so in a long developer stack trace rather than a tidy
+   sentence. Start the application, then reset.
+3. **Reset the demo data** — this is the step that makes the demonstration repeatable. In a second
+   window, in the OpsPilot folder:
    ```
    npm.cmd run demo:reset
    ```
@@ -28,13 +41,8 @@ out of scope for this release; do not use it for a demonstration.
    a response or resolution target in Administration during a demonstration, `demo:reset` leaves the
    edit in place. Put it back by hand in *Administration → Service levels* (the defaults are 8 h /
    72 h Low, 4 h / 24 h Medium, 1 h / 8 h High, 15 min / 2 h Urgent).
-3. **Start OpsPilot.** Double-click **`start.bat`** in the OpsPilot folder. Leave the console window
-   open — closing it stops the application. Wait for:
-   ```
-   OpsPilot is up at http://localhost:5173
-   ```
-   A first run on a new machine sets things up and can take a few minutes. A normal start is well
-   under a minute.
+
+   The application keeps running while you do this; refresh the browser afterwards.
 4. **Check that the story is there:**
    ```
    npm.cmd run demo:check
