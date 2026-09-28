@@ -1,8 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════════════
    OpsPilot design tokens
    One source of truth for colour, type, spacing, radius, elevation, motion,
-   layers and semantic states. Light is the default; dark is a deliberate
-   palette, not an inversion. Every component and page reads from here.
+   layers and semantic states.
+
+   Dark is the product's default: a deep navy field with indigo light, glowing
+   surfaces and vivid but AA-safe state colours. Light is a deliberate second
+   palette on the same hues, not an inversion. Every component and page reads
+   from here; nothing else declares a colour.
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -10,7 +14,7 @@
   --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
   --fs-display: 2rem;     --lh-display: 2.5rem;   /* 32 / 40 */
-  --fs-h1: 1.75rem;       --lh-h1: 2.125rem;      /* 28 / 34 */
+  --fs-h1: 1.625rem;      --lh-h1: 2rem;          /* 26 / 32 */
   --fs-number: 1.75rem;   --lh-number: 2rem;      /* operational numbers 28 / 32 */
   --fs-h2: 1rem;          --lh-h2: 1.375rem;      /* 16 / 22 */
   --fs-h3: 0.875rem;      --lh-h3: 1.25rem;       /* 14 / 20 */
@@ -19,14 +23,14 @@
   --fs-label: 0.6875rem;  --lh-label: 1rem;       /* 11 / 16 */
   --fs-caption: 0.75rem;  --lh-caption: 1rem;
   --fs-mono: 0.78rem;
-  --tracking-label: 0.04em;
+  --tracking-label: 0.06em;
 
   /* ── Spacing (4px base) ─────────────────────────────────────────────── */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px;
   --s8: 32px; --s10: 40px; --s12: 48px; --s16: 64px;
 
   /* ── Radius ─────────────────────────────────────────────────────────── */
-  --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 999px;
+  --r-sm: 6px; --r-md: 9px; --r-lg: 14px; --r-xl: 18px; --r-pill: 999px;
 
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --t-fast: 150ms cubic-bezier(0.2, 0, 0, 1);
@@ -36,70 +40,82 @@
   --z-sticky: 20; --z-dropdown: 40; --z-drawer: 60; --z-modal: 80; --z-toast: 100; --z-palette: 120;
 
   /* ── Layout ─────────────────────────────────────────────────────────── */
-  --sidebar-w: 240px; --sidebar-w-collapsed: 68px; --header-h: 56px; --content-max: 2200px;
+  --sidebar-w: 236px; --sidebar-w-collapsed: 68px; --header-h: 60px; --content-max: 2200px;
 
-  /* ── Light palette ──────────────────────────────────────────────────── */
-  --bg: #f1f3f7;
-  --surface: #ffffff;
-  --surface-2: #f6f8fb;
-  --surface-3: #eaeef4;
-  --border: #e4e8ee;
-  --border-strong: #c7d0dc;
-  --hairline: rgba(15, 26, 46, 0.06);
-  --text: #0b1526;
-  --text-2: #3f4d63;
-  --text-3: #5a6a84;
-  --violet: #6d4de6; --violet-soft: #efeafd; --violet-text: #4f34b8;
-  --text-inverse: #ffffff;
+  /* ── Dark palette (default) ─────────────────────────────────────────── */
+  --bg: #070b14;
+  --bg-glow: radial-gradient(900px 520px at 85% -10%, rgba(79, 107, 255, 0.16), transparent 62%),
+             radial-gradient(700px 480px at -10% 105%, rgba(108, 76, 246, 0.12), transparent 60%);
+  --surface: #0d1420;
+  --surface-2: #121b2b;
+  --surface-3: #182337;
+  --surface-4: #1f2c45;
+  --border: rgba(126, 150, 255, 0.14);
+  --border-strong: rgba(126, 150, 255, 0.30);
+  --hairline: rgba(126, 150, 255, 0.10);
+  --text: #eef2ff;
+  --text-2: #b8c3e0;
+  --text-3: #8391b3;
+  --text-inverse: #0b1220;
+  --violet: #a78bfa; --violet-soft: #2a2160; --violet-text: #c9b8ff;
 
-  --accent: #2457e6;
-  --accent-strong: #1b45c4;
-  --accent-soft: #e9efff;
-  --accent-text: #1b45c4;
-  --cyan: #0e8fa8;
-  --cyan-soft: #e3f5f8;
-  --cyan-text: #0b6478;
+  --accent: #4f6bff;
+  --accent-strong: #6d85ff;
+  --accent-soft: #172452;
+  --accent-text: #a1b4ff;
+  --accent-2: #6a4cf6;
+  --accent-gradient: linear-gradient(135deg, #4560f5 0%, #5a58f8 55%, #6a4cf6 100%);
+  --accent-glow: 0 0 0 1px rgba(99, 125, 255, 0.35), 0 10px 30px rgba(79, 107, 255, 0.35);
+  --cyan: #38bdf8;
+  --cyan-soft: #0f2e42;
+  --cyan-text: #8ad9ff;
 
-  --success: #16843f; --success-soft: #e8f6ec; --success-text: #136b34;
-  --warning: #b7650a; --warning-soft: #fff4e0; --warning-text: #8a4b06;
-  --danger: #c62828;  --danger-soft: #fdecec;  --danger-text: #a12020;
-  --info: #2457e6;    --info-soft: #e9efff;    --info-text: #1b45c4;
-  --neutral: #64748b; --neutral-soft: #eef2f6; --neutral-text: #475569;
+  --success: #2fd27d; --success-soft: #0b3527; --success-text: #7ff0b1;
+  --warning: #f2b23a; --warning-soft: #3b2a0a; --warning-text: #ffd27a;
+  --danger: #f2555f;  --danger-soft: #45141c;  --danger-text: #ff9ea4;
+  --info: #4f6bff;    --info-soft: #172452;    --info-text: #a1b4ff;
+  --neutral: #8391b3; --neutral-soft: #1a2436; --neutral-text: #c0cbe6;
 
   /* Priority: always paired with text (P1–P4), never colour alone. */
-  --p1: #c62828; --p1-soft: #fdecec; --p1-text: #a12020;
-  --p2: #c2410c; --p2-soft: #fff1e8; --p2-text: #9a3412;
-  --p3: #2457e6; --p3-soft: #e9efff; --p3-text: #1b45c4;
-  --p4: #64748b; --p4-soft: #eef2f6; --p4-text: #475569;
+  --p1: #ef3f52; --p1-soft: #4a121e; --p1-text: #ff9aa6;
+  --p2: #f4713b; --p2-soft: #47230f; --p2-text: #ffb48c;
+  --p3: #f2b23a; --p3-soft: #3b2a0a; --p3-text: #ffd27a;
+  --p4: #7c8db0; --p4-soft: #1e2a40; --p4-text: #b9c6e4;
 
   /* Ticket status hues. `-text` is the AA-safe ink on the matching `-soft` background. */
-  --st-open: #2457e6;        --st-open-soft: #e9efff;      --st-open-text: #1b45c4;
-  --st-progress: #6d4de6;    --st-progress-soft: #efeafd;  --st-progress-text: #4f34b8;
-  --st-waiting: #b7650a;     --st-waiting-soft: #fff4e0;   --st-waiting-text: #8a4b06;
-  --st-resolved: #16843f;    --st-resolved-soft: #e8f6ec;  --st-resolved-text: #136b34;
-  --st-closed: #64748b;      --st-closed-soft: #eef2f6;    --st-closed-text: #475569;
+  --st-open: #8ea1cf;        --st-open-soft: #1c2740;      --st-open-text: #c9d4f2;
+  --st-progress: #5b7cff;    --st-progress-soft: #14297a;  --st-progress-text: #b0c2ff;
+  --st-waiting: #f2b23a;     --st-waiting-soft: #3b2a0a;   --st-waiting-text: #ffd27a;
+  --st-resolved: #2fd27d;    --st-resolved-soft: #0b3527;  --st-resolved-text: #7ff0b1;
+  --st-closed: #6f7d9c;      --st-closed-soft: #171e2e;    --st-closed-text: #a9b5d0;
 
-  /* Navigation (always dark: the one constant of the OpsPilot identity). */
-  --nav-bg: #0a1424;
-  --nav-bg-2: #0e1b30;
-  --nav-text: #aab7cd;
+  /* Chart series */
+  --chart-1: #4f6bff; --chart-2: #8b5cf6; --chart-3: #2fd27d; --chart-4: #f2b23a; --chart-5: #f2555f; --chart-6: #38bdf8;
+
+  /* Navigation */
+  --nav-bg: #090e19;
+  --nav-bg-2: #0d1420;
+  --nav-text: #9aa8cb;
   --nav-text-strong: #ffffff;
-  --nav-muted: #6f7f9c;
-  --nav-hover: rgba(111, 156, 255, 0.08);
-  --nav-active: rgba(111, 156, 255, 0.14);
-  --nav-border: rgba(255, 255, 255, 0.06);
-  --nav-accent: #6f9cff;
+  --nav-muted: #7f8db0;
+  --nav-hover: rgba(126, 150, 255, 0.08);
+  --nav-active: linear-gradient(90deg, rgba(79, 107, 255, 0.34), rgba(79, 107, 255, 0.16));
+  --nav-active-border: rgba(126, 150, 255, 0.38);
+  --nav-border: rgba(126, 150, 255, 0.10);
+  --nav-accent: #8fa6ff;
 
   /* Elevation */
-  --shadow-sm: none;
-  --shadow-md: 0 6px 16px rgba(15, 26, 46, 0.10), 0 1px 3px rgba(15, 26, 46, 0.06);
-  --shadow-lg: 0 20px 48px rgba(15, 26, 46, 0.16), 0 2px 8px rgba(15, 26, 46, 0.06);
-  --ring: 0 0 0 3px rgba(36, 87, 230, 0.28);
+  --shadow-sm: 0 1px 0 rgba(126, 150, 255, 0.04);
+  --shadow-card: 0 0 0 1px rgba(126, 150, 255, 0.02), 0 12px 32px rgba(2, 6, 18, 0.45);
+  --shadow-md: 0 8px 24px rgba(2, 6, 18, 0.55), 0 1px 3px rgba(2, 6, 18, 0.4);
+  --shadow-lg: 0 24px 64px rgba(2, 6, 18, 0.7), 0 0 0 1px rgba(126, 150, 255, 0.12);
+  --glow-soft: 0 0 32px rgba(79, 107, 255, 0.14);
+  --ring: 0 0 0 3px rgba(79, 107, 255, 0.4);
 
   /* Inputs */
-  --input-bg: #ffffff;
-  --input-border: #cfd8e4;
-  --input-placeholder: #8a98ad;
+  --input-bg: #0a101c;
+  --input-border: rgba(126, 150, 255, 0.22);
+  --input-placeholder: #6d7a9c;
 
   /* Compatibility aliases used by older modules. */
   --panel: var(--surface);
@@ -110,64 +126,83 @@
   --input: var(--input-bg);
   --shadow: var(--shadow-sm);
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
-[data-theme='dark'] {
-  --bg: #080d18;
-  --surface: #0f1728;
-  --surface-2: #152036;
-  --surface-3: #1b2842;
-  --border: rgba(148, 170, 210, 0.12);
-  --border-strong: rgba(148, 170, 210, 0.26);
-  --hairline: rgba(148, 170, 210, 0.08);
-  --violet: #a48cff; --violet-soft: #271f4d; --violet-text: #c3b3ff;
-  --text: #e6ecf6;
-  --text-2: #b3c0d6;
-  --text-3: #8797b3;
-  --text-inverse: #0b1220;
+/* Kept for explicitness: `data-theme="dark"` is the default palette above. */
+[data-theme='dark'] { color-scheme: dark; }
 
-  --accent: #6f9cff;
-  --accent-strong: #8db0ff;
-  --accent-soft: #1a2c52;
-  --accent-text: #9fbcff;
-  --cyan: #4fc3d8;
-  --cyan-soft: #10333c;
-  --cyan-text: #8fe0ee;
+[data-theme='light'] {
+  --bg: #eef1f8;
+  --bg-glow: radial-gradient(900px 520px at 85% -10%, rgba(79, 107, 255, 0.10), transparent 62%),
+             radial-gradient(700px 480px at -10% 105%, rgba(108, 76, 246, 0.07), transparent 60%);
+  --surface: #ffffff;
+  --surface-2: #f5f7fc;
+  --surface-3: #e9edf7;
+  --surface-4: #dde3f2;
+  --border: #dee3f0;
+  --border-strong: #bcc7e0;
+  --hairline: rgba(20, 34, 80, 0.07);
+  --text: #0b1226;
+  --text-2: #3d4a68;
+  --text-3: #5d6b8c;
+  --text-inverse: #ffffff;
+  --violet: #6d4de6; --violet-soft: #efeafd; --violet-text: #4f34b8;
 
-  --success: #4ccb76; --success-soft: #11321d; --success-text: #7fe0a0;
-  --warning: #f2b04e; --warning-soft: #3a2a0d; --warning-text: #f5c77a;
-  --danger: #f27272;  --danger-soft: #3d1717;  --danger-text: #f79a9a;
-  --info: #6f9cff;    --info-soft: #1a2c52;    --info-text: #9fbcff;
-  --neutral: #94a3b8; --neutral-soft: #1d2a45; --neutral-text: #b3c0d6;
+  --accent: #3b57f0;
+  --accent-strong: #2a43d4;
+  --accent-soft: #e8ecff;
+  --accent-text: #2a43d4;
+  --accent-2: #6a4cf6;
+  --accent-gradient: linear-gradient(135deg, #3b57f0 0%, #4b4ff0 55%, #6a4cf6 100%);
+  --accent-glow: 0 0 0 1px rgba(59, 87, 240, 0.25), 0 10px 24px rgba(59, 87, 240, 0.28);
+  --cyan: #0e8fa8;
+  --cyan-soft: #e3f5f8;
+  --cyan-text: #0b6478;
 
-  --p1: #f27272; --p1-soft: #3d1717; --p1-text: #f79a9a;
-  --p2: #f5a05a; --p2-soft: #3a2410; --p2-text: #f8b97f;
-  --p3: #6f9cff; --p3-soft: #1a2c52; --p3-text: #9fbcff;
-  --p4: #94a3b8; --p4-soft: #1d2a45; --p4-text: #b3c0d6;
+  --success: #16843f; --success-soft: #e6f6ec; --success-text: #136b34;
+  --warning: #b7650a; --warning-soft: #fff3df; --warning-text: #8a4b06;
+  --danger: #c62828;  --danger-soft: #fdecec;  --danger-text: #a12020;
+  --info: #3b57f0;    --info-soft: #e8ecff;    --info-text: #2a43d4;
+  --neutral: #64748b; --neutral-soft: #eef2f6; --neutral-text: #475569;
 
-  --st-open: #6f9cff;        --st-open-soft: #1a2c52;    --st-open-text: #9fbcff;
-  --st-progress: #a48cff;    --st-progress-soft: #271f4d; --st-progress-text: #c3b3ff;
-  --st-waiting: #f2b04e;     --st-waiting-soft: #3a2a0d;  --st-waiting-text: #f5c77a;
-  --st-resolved: #4ccb76;    --st-resolved-soft: #11321d; --st-resolved-text: #7fe0a0;
-  --st-closed: #94a3b8;      --st-closed-soft: #1d2a45;   --st-closed-text: #b3c0d6;
+  --p1: #c62828; --p1-soft: #fdecec; --p1-text: #a12020;
+  --p2: #c2410c; --p2-soft: #fff1e8; --p2-text: #9a3412;
+  --p3: #b7650a; --p3-soft: #fff3df; --p3-text: #8a4b06;
+  --p4: #64748b; --p4-soft: #eef2f6; --p4-text: #475569;
 
-  --nav-bg: #05090f;
-  --nav-bg-2: #0a1120;
-  --nav-border: rgba(255, 255, 255, 0.05);
-  --nav-hover: rgba(111, 156, 255, 0.08);
-  --nav-active: rgba(111, 156, 255, 0.14);
+  --st-open: #64748b;        --st-open-soft: #eef2f6;      --st-open-text: #475569;
+  --st-progress: #3b57f0;    --st-progress-soft: #e8ecff;  --st-progress-text: #2a43d4;
+  --st-waiting: #b7650a;     --st-waiting-soft: #fff3df;   --st-waiting-text: #8a4b06;
+  --st-resolved: #16843f;    --st-resolved-soft: #e6f6ec;  --st-resolved-text: #136b34;
+  --st-closed: #8a97b2;      --st-closed-soft: #f0f3f8;    --st-closed-text: #4f5d7a;
+
+  --chart-1: #3b57f0; --chart-2: #7c3aed; --chart-3: #16a34a; --chart-4: #d97706; --chart-5: #dc2626; --chart-6: #0891b2;
+
+  /* Navigation stays dark in light mode: the one constant of the OpsPilot identity. */
+  --nav-bg: #0a1020;
+  --nav-bg-2: #0f172a;
+  --nav-text: #a5b1d0;
+  --nav-text-strong: #ffffff;
+  --nav-muted: #8492b6;
+  --nav-hover: rgba(126, 150, 255, 0.10);
+  --nav-active: linear-gradient(90deg, rgba(79, 107, 255, 0.42), rgba(79, 107, 255, 0.2));
+  --nav-active-border: rgba(126, 150, 255, 0.42);
+  --nav-border: rgba(255, 255, 255, 0.07);
+  --nav-accent: #8fa6ff;
 
   --shadow-sm: none;
-  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
-  --ring: 0 0 0 3px rgba(111, 156, 255, 0.35);
+  --shadow-card: 0 1px 2px rgba(15, 26, 46, 0.05), 0 8px 24px rgba(15, 26, 46, 0.06);
+  --shadow-md: 0 6px 16px rgba(15, 26, 46, 0.10), 0 1px 3px rgba(15, 26, 46, 0.06);
+  --shadow-lg: 0 20px 48px rgba(15, 26, 46, 0.16), 0 2px 8px rgba(15, 26, 46, 0.06);
+  --glow-soft: 0 0 32px rgba(59, 87, 240, 0.08);
+  --ring: 0 0 0 3px rgba(59, 87, 240, 0.28);
 
-  --input-bg: #0b1322;
-  --input-border: rgba(148, 170, 210, 0.22);
-  --input-placeholder: #7385a3;
+  --input-bg: #ffffff;
+  --input-border: #c9d2e6;
+  --input-placeholder: #8a98ad;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 /* ── Typography classes ───────────────────────────────────────────────── */

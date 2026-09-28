@@ -5,13 +5,15 @@ duration; they read tokens and compose components.
 
 | File | What it holds |
 | --- | --- |
-| `web/ui/tokens.css` | Design tokens: colour (light and dark palettes), typography scale, spacing, radius, elevation, motion, z-index layers, layout constants, semantic states. |
+| `web/ui/tokens.css` | Design tokens: colour (dark palette on `:root` — the default — and a light palette under `[data-theme='light']`), typography scale, spacing, radius, elevation and glow, motion, z-index layers, layout constants, semantic states, chart series. |
 | `web/ui/base.css` | Reset, buttons, inputs, layout primitives, panels, badges, SLA indicators, avatars, metrics, tables, filter bar, tabs, pagination, empty/loading/error states, alerts, toasts, menus, modal and drawer, activity timeline, breadcrumbs, property lists, tooltips. |
 | `web/ui/index.tsx` + `web/ui/icons.tsx` | React components (below) and the stroke icon set (`Icon`, `Logo`). |
 
 `web/style.css` imports both stylesheets and adds the application shell, the sign-in screen and
-page-specific classes. Every class name that existed before the redesign still works, restyled on
-tokens, so older modules render correctly without edits.
+page-specific classes, and ends with the **V3 visual layer** ("deep field"): a cascade-last block
+that restyles every surface as a card on a navy field — luminous 1px border, soft depth, indigo
+light on emphasis — without changing any layout. Every class name that existed before still works,
+so older modules render correctly without edits.
 
 ## Tokens
 
@@ -23,9 +25,14 @@ colour), semantic `--success/--warning/--danger/--info/--neutral` each with `-so
 dark navigation palette `--nav-*`. Priority and status are never colour-only: every badge carries a
 text label and a leading dot.
 
-**Dark mode** is a second, deliberately chosen palette under `[data-theme='dark']`, not an inversion:
-surfaces get lighter as they rise, accents are lifted for contrast, and primary buttons switch to dark
-ink on the lifted accent. The choice is stored in `localStorage` (`theme`) and applied to `<html>`.
+**Dark is the default.** The `:root` palette is a deep navy field (`--bg #070b14`) with indigo light:
+surfaces get lighter as they rise (`--surface` → `--surface-4`), borders are translucent indigo, the
+accent is `#4f6bff` with `--accent-gradient` for primary actions and `--accent-glow` / `--glow-soft`
+for emphasis. **Light** is a second, deliberately chosen palette under `[data-theme='light']` on the
+same hues, not an inversion; the navigation rail stays dark in both. `index.html` ships with
+`data-theme="dark"`, the choice is stored in `localStorage` (`theme`) and applied to `<html>` (a
+stored `light` wins; anything else means dark). Every `-soft`/`-text` pair and both accent gradients
+are AA-safe for normal text; axe (WCAG 2.2 AA) reports zero violations on every page in both themes.
 
 **Typography** (Inter, JetBrains Mono for keys and code, system fallbacks):
 
@@ -67,7 +74,7 @@ Administration pages share `web/admin-nav.tsx` (`AdminLayout`).
 
 ## Patterns
 
-- **Surfaces, not cards.** Related figures share one surface with hairline dividers (the operations pulse, the health strip, the stat rows); a bordered card is reserved for an independent object. Light mode groups with background contrast and no shadows; dark mode uses four depth layers instead of outlines.
+- **Cards on a deep field.** Every surface is a card: 1px luminous border, `--shadow-card` depth, a faint radial highlight in one corner, `--glow-soft` on hover or emphasis. Operational strips (the pulse, the KPI strip, My work, the admin glance) are rows of independent cards rather than one divided surface; metric cards lead with the number. Status and priority marks are tinted pills (`.status-mark.st-*`, `.mark.priority-* .p-code`), never colour alone.
 - **Cards are for summaries, not layout.** Lists and tables carry the work; panels group related
   content with a head, body and optional foot. Metric tiles appear only where a number needs a home.
 - **URL is state.** Service Desk filters, sort, page and view (`#/tickets`, `#/board`), Service

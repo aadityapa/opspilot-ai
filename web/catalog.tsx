@@ -237,7 +237,8 @@ function Marketplace({ catalog, categories, recent, initialQ, categoryId }: { ca
             </section>
           )}
           <section className="cat-block"><div className="section-title"><h2>{current ? current.name : 'All services'}</h2>{current ? <a href="#/tickets/new">All services →</a> : <span className="muted t-caption">{catalog.length} services</span>}</div>
-            {groups.length ? groups.map(({ c, items }) => <div key={c.id} className="cat-group">{!current && <h3 className="eyebrow">{c.name}</h3>}<ServiceList items={items} categories={categories} /></div>) : <p className="calm">No services in this category yet.</p>}
+            {/* One marketplace grid, ordered by category; the category tiles above are the way to narrow it. */}
+            {groups.length ? <ServiceList items={groups.flatMap((g) => g.items)} categories={categories} /> : <p className="calm">No services in this category yet.</p>}
           </section>
         </>
       )}

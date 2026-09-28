@@ -60,19 +60,34 @@ export function HomePage({ user, refresh }: { user: CurrentUser; refresh: number
 
   return (
     <div className="emp myspace">
-      <header className="emp-head">
-        <div>
-          <p className="eyebrow">{greeting.toUpperCase()}</p>
-          <h1>{greeting}, {user.name.split(' ')[0]}.</h1>
-          <p className="muted">{attentionCount ? `You have ${attentionCount} item${attentionCount === 1 ? '' : 's'} that need${attentionCount === 1 ? 's' : ''} your attention.` : 'Nothing needs your attention right now.'}</p>
-        </div>
-        <div className="page-actions">
-          <a className="btn" href="#/ask"><Icon name="spark" size={15} />Ask OpsPilot</a>
-          <a className="primary" href="#/tickets/new"><Icon name="plus" size={15} />Request something</a>
-        </div>
-      </header>
+      <div className="emp-hero">
+        <header className="emp-head">
+          <div>
+            <p className="eyebrow">{greeting.toUpperCase()}</p>
+            <h1>{greeting}, {user.name.split(' ')[0]}.</h1>
+            <p className="muted">{attentionCount ? `You have ${attentionCount} item${attentionCount === 1 ? '' : 's'} that need${attentionCount === 1 ? 's' : ''} your attention.` : 'Nothing needs your attention right now.'}</p>
+          </div>
+          <div className="page-actions">
+            <a className="btn" href="#/ask"><Icon name="spark" size={15} />Ask OpsPilot</a>
+            <a className="primary" href="#/tickets/new"><Icon name="plus" size={15} />Request something</a>
+          </div>
+        </header>
+        <HelpSearch catalog={catalog ?? []} staff={staff} />
+      </div>
 
-      <HelpSearch catalog={catalog ?? []} staff={staff} />
+      {/* The two doors into the catalog: an issue (no approval, straight to the desk) or a service. */}
+      <nav className="quick-doors" aria-label="Start here">
+        <a className="door door-issue" href="#/tickets/new?service=issue">
+          <span className="tile-icon danger" aria-hidden="true"><Icon name="alert" size={20} /></span>
+          <span className="door-body"><strong>Report an issue</strong><small>Something isn't working? Get help from the support team.</small></span>
+          <Icon name="arrow" size={18} />
+        </a>
+        <a className="door door-service" href="#/tickets/new">
+          <span className="tile-icon" aria-hidden="true"><Icon name="plus" size={20} /></span>
+          <span className="door-body"><strong>Request a service</strong><small>Need equipment or access? Browse the service catalog.</small></span>
+          <Icon name="arrow" size={18} />
+        </a>
+      </nav>
 
       <section className="mywork-strip" aria-label="My work">
         <p className="eyebrow strip-eyebrow">My work</p>

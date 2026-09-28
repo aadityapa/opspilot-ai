@@ -84,14 +84,30 @@ export function Icon({ name, size = 18, className }: { name: string; size?: numb
 
 export const ICON_NAMES = Object.keys(PATHS);
 
-/** The OpsPilot mark: a heading needle inside a rounded square. */
+/**
+ * The OpsPilot mark: a luminous sphere with a tilted orbit — services in motion, kept on course.
+ * Gradients are declared inline so the mark renders the same on the sidebar, the sign-in page and
+ * a plain document; the id is suffixed by size so two marks on one page never share a gradient.
+ */
 export function Logo({ size = 28 }: { size?: number }) {
+  const id = `op-${size}`;
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect x="1" y="1" width="30" height="30" rx="8" fill="#2457e6" />
-      <circle cx="16" cy="16" r="8.5" fill="none" stroke="#fff" strokeWidth="2.2" opacity="0.9" />
-      <path d="M16 8.5 19 16l-3 7.5-3-7.5z" fill="#fff" />
-      <circle cx="16" cy="16" r="1.6" fill="#2457e6" />
+      <defs>
+        <radialGradient id={`${id}-core`} cx="38%" cy="32%" r="70%">
+          <stop offset="0%" stopColor="#9db4ff" />
+          <stop offset="45%" stopColor="#4f6bff" />
+          <stop offset="100%" stopColor="#3a2fb8" />
+        </radialGradient>
+        <linearGradient id={`${id}-ring`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#c9d4ff" />
+          <stop offset="60%" stopColor="#7d93ff" />
+          <stop offset="100%" stopColor="#a78bfa" />
+        </linearGradient>
+      </defs>
+      <circle cx="16" cy="16" r="9.5" fill={`url(#${id}-core)`} />
+      <ellipse cx="16" cy="16.5" rx="14" ry="5.2" fill="none" stroke={`url(#${id}-ring)`} strokeWidth="2.1" transform="rotate(-24 16 16.5)" strokeLinecap="round" strokeDasharray="30 8" strokeDashoffset="-4" />
+      <circle cx="21.5" cy="11" r="2.2" fill="#eef2ff" opacity="0.95" />
     </svg>
   );
 }

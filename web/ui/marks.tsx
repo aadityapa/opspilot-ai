@@ -13,11 +13,12 @@ export const STATUS_WORD: Record<string, string> = { OPEN: 'Open', IN_PROGRESS: 
 const STATUS_VAR: Record<string, string> = { OPEN: 'st-open', IN_PROGRESS: 'st-progress', WAITING_FOR_USER: 'st-waiting', RESOLVED: 'st-resolved', CLOSED: 'st-closed' };
 
 export function PriorityMark({ value, short }: { value: string; short?: boolean }) {
-  return <span className={`mark priority-${PRIORITY_VAR[value] ?? 'p4'}`} title={labels[value]}><i style={{ background: `var(--${PRIORITY_VAR[value] ?? 'p4'})` }} />{PRIORITY_CODE[value] ?? value}{!short && <em> {PRIORITY_WORD[value] ?? ''}</em>}</span>;
+  return <span className={`mark priority-${PRIORITY_VAR[value] ?? 'p4'}`} title={labels[value]}><i style={{ background: `var(--${PRIORITY_VAR[value] ?? 'p4'})` }} /><span className="p-code">{PRIORITY_CODE[value] ?? value}</span>{!short && <em> {PRIORITY_WORD[value] ?? ''}</em>}</span>;
 }
 
 export function StatusMark({ value }: { value: string }) {
-  return <span className="mark status-mark"><i style={{ background: `var(--${STATUS_VAR[value] ?? 'st-closed'})` }} />{STATUS_WORD[value] ?? labels[value] ?? value}</span>;
+  const v = STATUS_VAR[value] ?? 'st-closed';
+  return <span className={`mark status-mark ${v}`}><i style={{ background: `var(--${v})` }} />{STATUS_WORD[value] ?? labels[value] ?? value}</span>;
 }
 
 export type SlaTone = 'ok' | 'warn' | 'risk' | 'breach' | 'met' | 'paused' | 'none';

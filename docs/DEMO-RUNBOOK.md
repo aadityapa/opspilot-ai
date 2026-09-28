@@ -65,8 +65,8 @@ out of scope for this release; do not use it for a demonstration.
    (**Ctrl + Shift + B**). Turn off browser and operating-system notifications, or switch Windows to
    focus assist. Decline the browser's offer to save a password — a password manager pop-up in the
    middle of a sign-in is the most common avoidable interruption.
-8. **Set the display.** 1920 × 1080, browser zoom at 100 % (**Ctrl + 0**), sidebar expanded, light
-   theme. If the room projector runs at 1366 × 768 the layout still holds: every demo screen fits
+8. **Set the display.** 1920 × 1080, browser zoom at 100 % (**Ctrl + 0**), sidebar expanded, dark
+   theme (the default). If the room projector runs at 1366 × 768 the layout still holds: every demo screen fits
    that width without sideways scrolling. Do not zoom in past 100 % or drop below about 1300 px of
    window width — the knowledge article's right-hand column, which carries *Still need help?*, is
    hidden below that and the script uses it.
@@ -108,8 +108,8 @@ table — a demonstration that was not reset first will number the new request d
   The approval part of the story uses Noah's laptop request, which genuinely does. Do not pretend
   otherwise — the honesty is a selling point.
 
-**Switching the theme**, if somebody asks: the moon icon in the header, or the account menu →
-*Switch to dark theme*. Switch back before continuing; do not toggle repeatedly.
+**Switching the theme**, if somebody asks: the sun icon in the header, or the account menu →
+*Switch to light theme*. Switch back before continuing; do not toggle repeatedly.
 
 ---
 

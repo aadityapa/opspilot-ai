@@ -113,7 +113,7 @@ export function Sidebar({ groups, route, collapsed, onNavigate }: { groups: NavG
     <aside className="sidebar" id="sidebar">
       <a href="#/" className="brand" aria-label="OpsPilot home" onClick={onNavigate}>
         <span className="brand-mark"><Logo size={30} /></span>
-        <span className="nav-label brand-text"><strong>OpsPilot</strong><small>Enterprise Service Operations</small></span>
+        <span className="nav-label brand-text"><strong>OpsPilot</strong><small>Service Operations</small></span>
       </a>
       <nav aria-label="Main navigation">
         {groups.map((g) => (

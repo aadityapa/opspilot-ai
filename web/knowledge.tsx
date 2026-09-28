@@ -108,18 +108,6 @@ function KnowledgeHome({ user, refresh, query }: { user: CurrentUser; refresh: n
         </section>
       ) : !overview ? <HomeSkeleton /> : (
         <>
-          {recommended.length > 0 && (
-            <section className="kb-block">
-              <div className="section-title"><h2>Recommended for you</h2><span className="muted t-caption">{recommendedBecause ? `Because you have an open ${recommendedBecause.category?.name} ticket` : 'From your open work'}</span></div>
-              <ul className="kb-hits">{recommended.map((a) => <ResultRow key={a.id} a={a} />)}</ul>
-            </section>
-          )}
-          {helpfulRows.length > 0 && (
-            <section className="kb-block">
-              <div className="section-title"><h2>Most helpful</h2><span className="muted t-caption">Rated by colleagues</span></div>
-              <ul className="kb-hits">{helpfulRows.map((a) => <ResultRow key={a.id} a={a} votes={a.helpfulVotes} />)}</ul>
-            </section>
-          )}
           {overview.categories.length > 0 && (
             <section className="kb-block">
               <div className="section-title"><h2>Browse by category</h2><span className="muted t-caption">{overview.total} articles</span></div>
@@ -136,12 +124,26 @@ function KnowledgeHome({ user, refresh, query }: { user: CurrentUser; refresh: n
               </ul>
             </section>
           )}
-          {recentRows.length > 0 && (
-            <section className="kb-block">
-              <div className="section-title"><h2>Recently updated</h2></div>
-              <ul className="kb-hits">{recentRows.map((a) => <ResultRow key={a.id} a={a} />)}</ul>
+          {recommended.length > 0 && (
+            <section className="kb-block kb-featured">
+              <div className="section-title"><h2>Recommended for you</h2><span className="muted t-caption">{recommendedBecause ? `Because you have an open ${recommendedBecause.category?.name} ticket` : 'From your open work'}</span></div>
+              <ul className="kb-hits">{recommended.map((a) => <ResultRow key={a.id} a={a} />)}</ul>
             </section>
           )}
+          <div className="kb-two">
+            {helpfulRows.length > 0 && (
+              <section className="kb-block">
+                <div className="section-title"><h2>Most helpful</h2><span className="muted t-caption">Rated by colleagues</span></div>
+                <ul className="kb-hits">{helpfulRows.map((a) => <ResultRow key={a.id} a={a} votes={a.helpfulVotes} />)}</ul>
+              </section>
+            )}
+            {recentRows.length > 0 && (
+              <section className="kb-block">
+                <div className="section-title"><h2>Recently updated</h2></div>
+                <ul className="kb-hits">{recentRows.map((a) => <ResultRow key={a.id} a={a} />)}</ul>
+              </section>
+            )}
+          </div>
           {!overview.total && <EmptyState icon="book" title="No articles yet">{user.role === 'ADMIN' ? 'Write the first one — it will appear here and in search.' : 'IT has not published guidance yet.'}</EmptyState>}
         </>
       )}

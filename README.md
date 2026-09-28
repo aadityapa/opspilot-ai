@@ -364,7 +364,7 @@ deterministic mock provider and is labelled **Mock AI** in the interface, exactl
 | ![A knowledge answer with clickable citations](docs/screenshots/ask-citations.png) | ![The same interface declining to answer for lack of evidence](docs/screenshots/ask-abstains.png) |
 | **Cited answer** — built only from passages this employee may read, each citation clickable. | **Abstention** — the answer nobody screenshots, and the one that matters most. |
 | ![Dark theme home](docs/screenshots/home-dark.png) | ![Ticket detail on a 390px viewport](docs/screenshots/mobile-ticket.png) |
-| **Dark mode** — a deliberate second palette, not an inversion. | **Mobile** — the same workflow at 390 × 844 with an off-canvas navigation drawer. |
+| **Themes** — dark by default, with a deliberate light palette on the same hues (not an inversion). | **Mobile** — the same workflow at 390 × 844 with an off-canvas navigation drawer. |
 
 The second-generation screens are in `docs/screenshots/v2/` — the final matrix is `p5-*.png`
 (sign-in light/dark/phone, My Space, catalog, request, approvals, knowledge, person, asset, Command

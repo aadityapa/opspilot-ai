@@ -93,7 +93,8 @@ function App() {
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false),
     [refresh, setRefresh] = useState(0);
-  const [dark, setDark] = useState(localStorage.getItem('theme') === 'dark'),
+  // Dark is the product's default; light is a remembered preference, never assumed.
+  const [dark, setDark] = useState(localStorage.getItem('theme') !== 'light'),
     [collapsed, setCollapsed] = useState(localStorage.getItem('opspilot:sidebar') === 'collapsed'),
     [navOpen, setNavOpen] = useState(false);
   const mobile = useMedia('(max-width: 900px)');
@@ -194,27 +195,22 @@ function App() {
             <span><strong>OpsPilot</strong><small>Enterprise Service Operations</small></span>
           </div>
           <div className="login-pitch">
-            <h1>Keep services moving.</h1>
-            <p>Connect employees, IT operations, knowledge, assets and service delivery in one intelligent workspace.</p>
+            <h1>IT operations, powered for people.</h1>
+            <p>A smarter service desk: employees ask in plain words, operations see what needs action now, and every answer keeps its context.</p>
             <ul className="login-points">
-              <li><Icon name="users" size={16} /><span><strong>People</strong> find answers and request services without learning ITSM.</span></li>
-              <li><Icon name="activity" size={16} /><span><strong>Operations</strong> see, prioritise, investigate and act from one queue.</span></li>
-              <li><Icon name="chart" size={16} /><span><strong>Leadership</strong> reads service health and direction, not vanity numbers.</span></li>
+              <li><Icon name="users" size={16} /><span><strong>People first</strong> — find answers and request services without learning ITSM.</span></li>
+              <li><Icon name="zap" size={16} /><span><strong>Faster resolution</strong> — one queue to see, prioritise, investigate and act.</span></li>
+              <li><Icon name="shield" size={16} /><span><strong>A more secure workplace</strong> — reviewed AI, audited actions, nothing automatic.</span></li>
             </ul>
           </div>
-          {/* Product preview: abstract surfaces, no figures — nothing here pretends to be live data. */}
-          <div className="login-preview" aria-hidden="true">
-            <div className="lp-window">
-              <div className="lp-bar"><i /><i /><i /></div>
-              <div className="lp-body">
-                <div className="lp-side"><i className="w" /><i /><i /><i className="on" /><i /><i /></div>
-                <div className="lp-main">
-                  <div className="lp-strip"><span /><span /><span /><span /></div>
-                  <div className="lp-rows"><span className="ok" /><span className="ok" /><span className="warn" /><span className="ok" /><span className="crit" /><span className="ok" /></div>
-                  <div className="lp-cards"><span /><span /></div>
-                </div>
-              </div>
-            </div>
+          {/* Decoration only: an orbital mark drawn in CSS. It carries no figures and pretends to be nothing. */}
+          <div className="login-orbit" aria-hidden="true">
+            <span className="orbit-glow" />
+            <span className="orbit-ring" />
+            <span className="orbit-ring second" />
+            <span className="orbit-world" />
+            <span className="orbit-moon" />
+            <span className="orbit-moon small" />
           </div>
           <small className="login-foot">Reviewed AI assistance · Fictional demo workspace</small>
         </section>
@@ -233,8 +229,8 @@ function App() {
               });
             }}
           >
-            <p className="eyebrow">WELCOME BACK</p>
-            <h2>Sign in to your OpsPilot workspace.</h2>
+            <p className="eyebrow">Welcome to OpsPilot</p>
+            <h2>Sign in to your OpsPilot workspace</h2>
             <p className="muted">Use the account provided by your administrator.</p>
             {error && (
               <div role="alert" className="alert error">

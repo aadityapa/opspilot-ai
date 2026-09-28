@@ -96,8 +96,12 @@ test('mobile navigation, theme persistence and keyboard entry', async ({ page })
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Email address')).toBeFocused();
   await login(page, 'employee');
-  await page.getByRole('button', { name: 'Use dark theme' }).click();
+  // Dark is the default; the light preference is the one that has to survive a reload.
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Use light theme' }).click();
   await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Use dark theme' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   // On a phone the navigation is an off-canvas drawer: closed until asked for, closed again after a jump.
   await expect(page.getByRole('link', { name: 'My requests', exact: true })).toBeHidden();
