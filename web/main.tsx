@@ -13,7 +13,8 @@ import {
 } from '../shared/model';
 import './style.css';
 import { Icon, Logo } from './ui/icons';
-import { Modal, ToastHost } from './ui';
+import { OrbitArt } from './ui/art';
+import { Modal, StatePage, ToastHost } from './ui';
 import { buildNav, routeCrumbs, useMedia, Sidebar, CreateMenu, Header } from './app-shell';
 import {AssetsPage} from './assets';
 import {TicketWorkspace} from './ticket';
@@ -203,15 +204,9 @@ function App() {
               <li><Icon name="shield" size={16} /><span><strong>A more secure workplace</strong> — reviewed AI, audited actions, nothing automatic.</span></li>
             </ul>
           </div>
-          {/* Decoration only: an orbital mark drawn in CSS. It carries no figures and pretends to be nothing. */}
-          <div className="login-orbit" aria-hidden="true">
-            <span className="orbit-glow" />
-            <span className="orbit-ring" />
-            <span className="orbit-ring second" />
-            <span className="orbit-world" />
-            <span className="orbit-moon" />
-            <span className="orbit-moon small" />
-          </div>
+          {/* Decoration only: the orbital mark, drawn in SVG. It carries no figures and pretends to be nothing;
+              its slow drift pauses when the tab is hidden and disappears under prefers-reduced-motion. */}
+          <div className="login-orbit" aria-hidden="true"><OrbitArt size={440} /></div>
           <small className="login-foot">Reviewed AI assistance · Fictional demo workspace</small>
         </section>
         <main className="login-main">
@@ -353,7 +348,7 @@ function App() {
           ) : route === '/notifications' ? (
             <NotificationsCenterPage user={user} act={act} busy={busy} refresh={refresh} />
           ) : route === '/account' ? (
-            <AccountPage user={user} refresh={refresh} busy={busy} act={act} mfaEnabled={!!auth?.mfaEnabled} onMfaChange={(enabled) => setAuth((a) => (a ? { ...a, mfaEnabled: enabled } : a))} />
+            <AccountPage user={user} refresh={refresh} busy={busy} act={act} mfaEnabled={!!auth?.mfaEnabled} onMfaChange={(enabled) => setAuth((a) => (a ? { ...a, mfaEnabled: enabled } : a))} dark={dark} onTheme={setDark} />
           ) : RESTRICTED.some((prefix) => route === prefix || route.startsWith(`${prefix}/`) || route.startsWith(`${prefix}?`)) ? (
             <Denied user={user} />
           ) : (
@@ -459,22 +454,16 @@ const RESTRICTED = ['/admin', '/settings', '/users', '/dashboard', '/analytics',
 function Denied({ user }: { user: CurrentUser }) {
   const staff = user.role !== 'EMPLOYEE';
   return (
-    <div className="state-page" role="alert">
-      <p className="eyebrow">403</p>
-      <h1>You don’t have access to this area.</h1>
-      <p className="muted">If you believe you need access, contact your OpsPilot administrator.</p>
-      <div className="page-actions"><a className="primary" href="#/">Return home</a>{staff && <a className="btn" href="#/tickets">Open Service Desk</a>}</div>
-    </div>
+    <StatePage code="403" title="You don’t have access to this area." role="alert" actions={<><a className="primary" href="#/">Return home</a>{staff && <a className="btn" href="#/tickets">Open Service Desk</a>}</>}>
+      If you believe you need access, contact your OpsPilot administrator.
+    </StatePage>
   );
 }
 function NotFound({ user }: { user: CurrentUser }) {
   const staff = user.role !== 'EMPLOYEE';
   return (
-    <div className="state-page">
-      <p className="eyebrow">404</p>
-      <h1>We couldn’t find that page.</h1>
-      <p className="muted">The link may be outdated or you may not have access.</p>
-      <div className="page-actions"><a className="primary" href="#/">Go to My Space</a>{staff ? <a className="btn" href="#/tickets">Open Service Desk</a> : <a className="btn" href="#/requests">My requests</a>}</div>
-    </div>
+    <StatePage code="404" title="We couldn’t find that page." actions={<><a className="primary" href="#/">Go to My Space</a>{staff ? <a className="btn" href="#/tickets">Open Service Desk</a> : <a className="btn" href="#/requests">My requests</a>}</>}>
+      The link may be outdated or you may not have access.
+    </StatePage>
   );
 }

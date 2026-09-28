@@ -3,7 +3,7 @@ import { api } from './api';
 import { Pending, useRecord, type Act } from './operations';
 import { labels, type CurrentUser, type Notification, type SearchResults } from '../shared/model';
 import { Avatar } from './ticket-extras';
-import { EmptyState, fmtAgo, ticketKey, toast } from './ui';
+import { EmptyState, fmtAgo, ticketKey, toast, useDismiss } from './ui';
 import { Icon } from './ui/icons';
 
 /* ── Live updates ─────────────────────────────────────────────────────── */
@@ -155,17 +155,15 @@ export function NotificationBell({ user, refresh, act }: { user: CurrentUser; re
   const { data } = useRecord<{ items: Notification[]; unread: number }>('/notifications?pageSize=40', refresh);
   const unread = data?.unread ?? 0;
   useEffect(() => { document.title = unread ? `(${unread}) OpsPilot AI` : 'OpsPilot AI · IT support'; }, [unread]);
+  const bellWrap = useRef<HTMLDivElement>(null);
+  useDismiss(open, () => setOpen(false), bellWrap);
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.bell-wrap')) setOpen(false); };
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', key);
     // The inbox is a light modal: the page underneath is inert while it is open, so nothing behind
     // it can be reached by pointer, keyboard or assistive tech until it closes.
     const main = document.getElementById('main');
     main?.setAttribute('inert', '');
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key); main?.removeAttribute('inert'); };
+    return () => { main?.removeAttribute('inert'); };
   }, [open]);
   const tabs = BELL_TABS.filter((t) => staff || !t.staffOnly);
   const current = tabs.find((t) => t.key === tab) ?? tabs[0];
@@ -173,7 +171,7 @@ export function NotificationBell({ user, refresh, act }: { user: CurrentUser; re
   const groups = (['Today', 'Yesterday', 'Earlier'] as const).map((g) => ({ g, rows: items.filter((n) => dayBucket(n.createdAt) === g) })).filter((x) => x.rows.length);
   const markRead = (n: Notification) => { if (!n.readAt) void api('/notifications/read', 'POST', { ids: [n.id] }).catch(() => {}); };
   return (
-    <div className="bell-wrap">
+    <div className="bell-wrap" ref={bellWrap}>
       <button className="icon-btn" aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(!open)} data-tip="Notifications">
         <Icon name="bell" />
         {unread > 0 && <span className="unread-dot" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}
@@ -217,25 +215,23 @@ export const kindIcon = (kind: string) => ({ ASSIGNMENT: 'A', PUBLIC_REPLY: 'R',
 
 export function ProfileMenu({ user, dark, onTheme, onSignOut, busy }: { user: CurrentUser; dark: boolean; onTheme: () => void; onSignOut: () => void; busy: boolean }) {
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.profile-wrap')) setOpen(false); };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
+  const wrap = useRef<HTMLDivElement>(null);
+  // Outside click, Escape and navigation all close it: the menu never leaks into the next page.
+  useDismiss(open, () => setOpen(false), wrap);
   return (
-    <div className="profile-wrap">
+    <div className="profile-wrap" ref={wrap}>
       <button className="profile-btn" aria-label="Account menu" aria-expanded={open} onClick={() => setOpen(!open)}>
         <Avatar name={user.name} size={32} />
         <span className="user-info"><strong>{user.name}</strong><small>{labels[user.role]}</small></span>
       </button>
       {open && (
         <div className="bell-menu profile-menu" role="menu" aria-label="Account">
-          <div className="menu-head"><strong>{user.name}</strong><small>{user.email} · {labels[user.role]}</small></div>
+          <div className="menu-head"><Avatar name={user.name} size={36} /><div><strong>{user.name}</strong><small>{user.email}</small><small className="role-line">{labels[user.role]}</small></div></div>
           <a role="menuitem" href={`#/people/${user.id}`} onClick={() => setOpen(false)}><Icon name="user" size={16} />My profile</a>
           <a role="menuitem" href="#/account" onClick={() => setOpen(false)}><Icon name="shield" size={16} />Account &amp; security</a>
           <a role="menuitem" href="#/notifications" onClick={() => setOpen(false)}><Icon name="bell" size={16} />Notification preferences</a>
           <button role="menuitem" onClick={() => { onTheme(); }}><Icon name={dark ? 'sun' : 'moon'} size={16} />{dark ? 'Switch to light theme' : 'Switch to dark theme'}</button>
+          <hr />
           <button role="menuitem" disabled={busy} onClick={() => { setOpen(false); onSignOut(); }}><Icon name="logout" size={16} />Sign out</button>
         </div>
       )}

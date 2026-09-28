@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api, ApiError } from './api';
 import { Pending, Title, useRecord, when, type Act } from './operations';
+import { Icon } from './ui/icons';
 import {
   labels, priorities,
   type AiStatus, type AiUsageOverview, type AnswerResult, type CurrentUser,
@@ -261,12 +262,22 @@ export function AskPage({ refresh }: { refresh: number }) {
   // A suggested prompt elsewhere in the app links here as #/ask?q=…; it only pre-fills, never submits.
   const [question, setQuestion] = useState(() => new URLSearchParams(location.hash.split('?')[1] ?? '').get('q') ?? '');
   const answer = useAiAction<AnswerResult>();
+  // Exchanges from this visit only. Nothing is stored: the backend keeps no chat history, so the
+  // page keeps none either — a reload starts clean, and the interface says so.
+  const [thread, setThread] = useState<{ q: string; a: AnswerResult }[]>([]);
+  const [asked, setAsked] = useState('');
+  const ask = (q: string) => {
+    if (q.trim().length < 5) return;
+    setAsked(q.trim());
+    void answer.run(async () => { const r = await api<AnswerResult>('/ai/ask', 'POST', { question: q.trim() }); setThread((t) => [...t, { q: q.trim(), a: r }]); setQuestion(''); return r; });
+  };
+  const starters = ['How do I reconnect to the company VPN?', 'How do I set up two-factor authentication on a new phone?', 'What should I do when the printer shows offline?', 'How do I request access to a shared folder?'];
   return (
-    <>
+    <div className="ask">
       <Title title="Ask the knowledge base" />
-      <p className="muted">
+      <p className="muted ask-lead">
         Answers are written only from knowledge articles you are allowed to read. Articles you cannot access are never
-        searched, so they cannot appear in an answer.
+        searched, so they cannot appear in an answer. Questions about specific tickets are not answered here — open the ticket instead.
       </p>
       {!status ? (
         <Pending error="" />
@@ -281,81 +292,70 @@ export function AskPage({ refresh }: { refresh: number }) {
           </div>
         </section>
       ) : (
-        <>
-          <section className="panel form-panel">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void answer.run(() => api<AnswerResult>('/ai/ask', 'POST', { question }));
-              }}
-            >
-              <label>
-                Your question
-                <input
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  minLength={5}
-                  maxLength={500}
-                  required
-                  placeholder="For example: how do I reconnect to the VPN?"
-                />
-              </label>
-              <div className="form-actions">
-                <span className="muted fine">
-                  <MockBadge mock={status.mock} /> {status.usedToday} of {status.dailyLimit} AI requests used in 24 hours
-                </span>
-                <button className="primary" disabled={answer.busy}>
-                  {answer.busy ? 'Searching the knowledge base…' : 'Ask'}
-                </button>
+        <div className="ask-workspace">
+          <section className="ask-thread" aria-label="This session" aria-live="polite">
+            {!thread.length && !answer.busy && !answer.error && (
+              <div className="ask-welcome">
+                <span className="gloss-tile lg violet" aria-hidden="true"><Icon name="spark" size={28} /></span>
+                <h2>What would you like to know?</h2>
+                <p className="muted">Try one of these, or type your own question below. Every answer cites the article it came from.</p>
+                <div className="ask-starters">{starters.map((q) => <button key={q} type="button" className="chip-btn" onClick={() => { setQuestion(q); ask(q); }}>{q}</button>)}</div>
               </div>
-            </form>
-          </section>
-
-          {answer.error && <AiError message={answer.error} />}
-          {answer.busy && (
-            <div className="loading" role="status">
-              Retrieving passages you are allowed to read…
-            </div>
-          )}
-          {answer.data && !answer.busy && (
-            <section className="panel">
-              {answer.data.sufficientEvidence ? (
-                <>
-                  <div className="panel-head">
-                    <h2>Answer</h2>
-                    <MockBadge mock={answer.data.mock} />
+            )}
+            {thread.map((x, i) => (
+              <div key={i} className="ask-exchange">
+                <div className="ask-q"><span className="avatar" aria-hidden="true">You</span><p>{x.q}</p></div>
+                <div className="ask-a">
+                  <span className="gloss-tile sm violet ask-mark" aria-hidden="true"><Icon name="spark" size={16} /></span>
+                  <div className="ask-a-body">
+                    {x.a.sufficientEvidence ? (
+                      <>
+                        <div className="ask-a-head"><h2>Answer</h2><MockBadge mock={x.a.mock} /></div>
+                        <div className="ai-result">
+                          <p className="answer-body">{x.a.answer}</p>
+                          <h3>Sources</h3>
+                          <ol className="citations">
+                            {x.a.citations.map((c) => (
+                              <li key={`${c.articleId}-${c.chunkIndex}`}>
+                                <a href={`#/knowledge/${c.articleId}`}><Icon name="book" size={14} />{c.articleTitle}{c.heading ? ` — ${c.heading}` : ''}</a>
+                                <blockquote>{c.excerpt}</blockquote>
+                              </li>
+                            ))}
+                          </ol>
+                          <p className="muted fine">{x.a.disclaimer}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="empty ask-abstain">
+                        <h3>Not enough evidence to answer</h3>
+                        <p className="muted">{x.a.escalationAdvice}</p>
+                        <div className="flex"><a className="primary" href="#/tickets/new">Raise a ticket</a><a className="btn" href="#/knowledge">Browse the knowledge base</a></div>
+                      </div>
+                    )}
                   </div>
-                  <div className="ai-result">
-                    <p className="answer-body">{answer.data.answer}</p>
-                    <h3>Sources</h3>
-                    <ol className="citations">
-                      {answer.data.citations.map((c) => (
-                        <li key={`${c.articleId}-${c.chunkIndex}`}>
-                          <a href={`#/knowledge/${c.articleId}`}>
-                            {c.articleTitle}
-                            {c.heading ? ` — ${c.heading}` : ''}
-                          </a>
-                          <blockquote>{c.excerpt}</blockquote>
-                        </li>
-                      ))}
-                    </ol>
-                    <p className="muted fine">{answer.data.disclaimer}</p>
-                  </div>
-                </>
-              ) : (
-                <div className="empty">
-                  <h3>Not enough evidence to answer</h3>
-                  <p className="muted">{answer.data.escalationAdvice}</p>
-                  <a className="primary" href="#/tickets/new">
-                    Raise a ticket
-                  </a>
                 </div>
-              )}
-            </section>
-          )}
-        </>
+              </div>
+            ))}
+            {answer.busy && (
+              <div className="ask-exchange">
+                <div className="ask-q"><span className="avatar" aria-hidden="true">You</span><p>{asked}</p></div>
+                <div className="loading ask-pending" role="status">Retrieving passages you are allowed to read…</div>
+              </div>
+            )}
+            {answer.error && !answer.busy && <AiError message={answer.error} />}
+          </section>
+          <form className="ask-composer" onSubmit={(e) => { e.preventDefault(); ask(question); }}>
+            <label className="sr-only" htmlFor="ask-question">Your question</label>
+            <div className="ask-field">
+              <Icon name="search" size={18} />
+              <input id="ask-question" value={question} onChange={(e) => setQuestion(e.target.value)} minLength={5} maxLength={500} required placeholder="Ask a question about IT services, e.g. how do I reconnect to the VPN?" autoComplete="off" />
+              <button className="primary" disabled={answer.busy || question.trim().length < 5}>{answer.busy ? 'Searching the knowledge base…' : 'Ask'}</button>
+            </div>
+            <p className="muted fine ask-foot"><MockBadge mock={status.mock} /> {status.usedToday} of {status.dailyLimit} AI requests used in 24 hours · answers are labelled AI and cite their sources · this session is not stored</p>
+          </form>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 

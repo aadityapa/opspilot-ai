@@ -4,7 +4,7 @@ import { useRecord, when, type Act } from './operations';
 import { labels, type CurrentUser } from '../shared/model';
 import { AdminLayout, SettingsSection } from './admin-nav';
 import { Icon } from './ui/icons';
-import { Avatar, EmptyState, Modal, fmtAgo } from './ui';
+import { Avatar, Drawer, EmptyState, Modal, fmtAgo } from './ui';
 
 interface AdminUser extends CurrentUser {
   active: boolean;
@@ -24,6 +24,7 @@ export function UsersPage({ refresh, busy, act, currentId }: { refresh: number; 
   const { data: users, error } = useRecord<AdminUser[]>('/admin/users', refresh);
   const [link, setLink] = useState<{ user: string; link: string } | null>(null);
   const [erasing, setErasing] = useState<AdminUser | null>(null);
+  const [adding, setAdding] = useState(false);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'disabled' | 'locked' | 'no-mfa'>('all');
   const locked = (u: AdminUser) => !!u.lockedUntil && new Date(u.lockedUntil) > new Date();
@@ -32,7 +33,7 @@ export function UsersPage({ refresh, busy, act, currentId }: { refresh: number; 
   const access = (u: AdminUser) => (!u.active ? { tone: 'neutral', word: 'Disabled' } : locked(u) ? { tone: 'crit', word: 'Locked' } : u.mustChangePassword ? { tone: 'warn', word: 'Must change password' } : { tone: 'ok', word: 'Active' });
 
   return (
-    <AdminLayout current="users" actions={<a className="btn" href="#/people"><Icon name="users" size={15} />People directory</a>}>
+    <AdminLayout current="users" actions={<><a className="btn" href="#/people"><Icon name="users" size={15} />People directory</a><button className="primary" onClick={() => setAdding(true)}><Icon name="plus" size={15} />Add account</button></>}>
       {link && (
         <div className="alert success" role="status">
           <strong>One-time reset link for {link.user}</strong> — valid for 24 hours, shown once. Hand it over through your approved secure channel.
@@ -94,24 +95,12 @@ export function UsersPage({ refresh, busy, act, currentId }: { refresh: number; 
         ) : <EmptyState icon="users" title="No accounts match" action={<button onClick={() => { setQ(''); setFilter('all'); }}>Clear filters</button>} />}
       </SettingsSection>
 
-      <SettingsSection id="acc-add" title="Add an account" description="Creates a sign-in with a temporary password. The person is asked to replace it at first sign-in. Title, department and manager are set afterwards in People.">
-        <form className="admin-form" onSubmit={(e) => {
-          e.preventDefault();
-          const form = e.currentTarget;
-          const data = Object.fromEntries(new FormData(form));
-          void act(async () => { await api('/admin/users', 'POST', data); form.reset(); }, 'User created. They must change the password at first sign-in.');
-        }}>
-          <div className="two-grid">
-            <div className="field"><label htmlFor="nu-name" className="required">Full name</label><input id="nu-name" name="name" required minLength={2} maxLength={100} /></div>
-            <div className="field"><label htmlFor="nu-email" className="required">Email</label><input id="nu-email" name="email" type="email" required /></div>
-            <div className="field"><label htmlFor="nu-role">Role</label>
-              <select id="nu-role" aria-label="Role" name="role"><option value="EMPLOYEE">Employee</option><option value="ENGINEER">IT Engineer</option><option value="ADMIN">Administrator</option></select>
-            </div>
-            <div className="field"><label htmlFor="nu-pass" className="required">Temporary password</label><input id="nu-pass" type="password" name="password" autoComplete="new-password" required minLength={12} maxLength={128} aria-describedby="nu-pass-help" /><small id="nu-pass-help" className="field-help">At least 12 characters and not a common password. It must not contain the person’s name.</small></div>
-          </div>
-          <div className="form-actions"><span className="grow" /><button disabled={busy} className="primary">Create user</button></div>
-        </form>
-      </SettingsSection>
+      {adding && (
+        <Drawer title="Add an account" eyebrow="Accounts & access" onClose={() => setAdding(false)}
+          footer={<><button type="button" onClick={() => setAdding(false)}>Cancel</button><span className="grow" /><button form="add-account-form" disabled={busy} className="primary"><Icon name="plus" size={15} />Create user</button></>}>
+          <AddAccountForm busy={busy} act={act} onDone={() => setAdding(false)} />
+        </Drawer>
+      )}
 
       {erasing && (
         <Modal title={`Erase ${erasing.name}?`} onClose={() => setErasing(null)} footer={<><button onClick={() => setErasing(null)}>Cancel</button><span className="grow" /><button form="erase-form" disabled={busy} className="danger">Erase permanently</button></>}>
@@ -122,6 +111,50 @@ export function UsersPage({ refresh, busy, act, currentId }: { refresh: number; 
         </Modal>
       )}
     </AdminLayout>
+  );
+}
+
+/**
+ * Account creation is a deliberate step in its own pane. Validation is designed, not the browser's
+ * bubble: every field is checked on submit, the problems are written next to the fields, and the
+ * first one receives focus. Nothing is sent until every check passes.
+ */
+function AddAccountForm({ busy, act, onDone }: { busy: boolean; act: Act; onDone: () => void }) {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [failure, setFailure] = useState('');
+  const validate = (f: Record<string, string>) => {
+    const e: Record<string, string> = {};
+    if (f.name.trim().length < 2) e.name = 'Enter the person’s full name (at least 2 characters).';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = 'Enter a valid work e-mail address.';
+    if (f.password.length < 12) e.password = 'The temporary password needs at least 12 characters.';
+    else if (f.name.trim() && f.name.trim().toLowerCase().split(/\s+/).some((part) => part.length >= 3 && f.password.toLowerCase().includes(part))) e.password = 'The password must not contain the person’s name.';
+    return e;
+  };
+  return (
+    <form id="add-account-form" className="admin-form drawer-form" noValidate onSubmit={(e) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const f = Object.fromEntries(new FormData(form)) as Record<string, string>;
+      const found = validate(f);
+      setErrors(found); setFailure('');
+      const first = (['name', 'email', 'password'] as const).find((k) => found[k]);
+      if (first) { document.getElementById({ name: 'nu-name', email: 'nu-email', password: 'nu-pass' }[first])?.focus(); return; }
+      void act(async () => {
+        try { await api('/admin/users', 'POST', f); }
+        catch (err) { setFailure(err instanceof Error ? err.message : 'The account could not be created.'); throw err; }
+        form.reset(); onDone();
+      }, 'User created. They must change the password at first sign-in.');
+    }}>
+      <p className="muted t-sm">Creates a sign-in with a temporary password. The person is asked to replace it at first sign-in. Title, department and manager are set afterwards in People.</p>
+      {failure && <div className="alert error" role="alert">{failure}</div>}
+      <div className="field"><label htmlFor="nu-name" className="required">Full name</label><input id="nu-name" name="name" maxLength={100} autoComplete="off" aria-invalid={errors.name ? 'true' : undefined} aria-describedby={errors.name ? 'nu-name-err' : undefined} onChange={() => errors.name && setErrors((x) => ({ ...x, name: '' }))} />{errors.name && <small id="nu-name-err" className="field-error" role="alert">{errors.name}</small>}</div>
+      <div className="field"><label htmlFor="nu-email" className="required">Email</label><input id="nu-email" name="email" type="email" autoComplete="off" aria-invalid={errors.email ? 'true' : undefined} aria-describedby={errors.email ? 'nu-email-err' : undefined} onChange={() => errors.email && setErrors((x) => ({ ...x, email: '' }))} />{errors.email && <small id="nu-email-err" className="field-error" role="alert">{errors.email}</small>}</div>
+      <div className="field"><label htmlFor="nu-role">Role</label>
+        <select id="nu-role" aria-label="Role" name="role" defaultValue="EMPLOYEE"><option value="EMPLOYEE">Employee</option><option value="ENGINEER">IT Engineer</option><option value="ADMIN">Administrator</option></select>
+        <small className="field-help">Employees raise and follow requests; engineers work the queue; administrators configure the workspace.</small>
+      </div>
+      <div className="field"><label htmlFor="nu-pass" className="required">Temporary password</label><input id="nu-pass" type="password" name="password" autoComplete="new-password" maxLength={128} aria-invalid={errors.password ? 'true' : undefined} aria-describedby={errors.password ? 'nu-pass-err' : 'nu-pass-help'} onChange={() => errors.password && setErrors((x) => ({ ...x, password: '' }))} />{errors.password ? <small id="nu-pass-err" className="field-error" role="alert">{errors.password}</small> : <small id="nu-pass-help" className="field-help">At least 12 characters and not a common password. It must not contain the person’s name.</small>}</div>
+    </form>
   );
 }
 

@@ -120,22 +120,40 @@ function TemplatesAdmin({ act, busy, refresh }: { act: Act; busy: boolean; refre
 function AnnouncementsAdmin({ act, busy, refresh }: { act: Act; busy: boolean; refresh: number }) {
   const { data: items, error } = useRecord<Announcement[]>('/admin/announcements', refresh);
   const [editing, setEditing] = useState<Announcement | null>(null);
+  const [draft, setDraft] = useState({ title: '', body: '', audience: 'ALL', pinned: false, expiresAt: '' });
+  const start = (a: Announcement | null) => { setEditing(a); setDraft({ title: a?.title ?? '', body: a?.body ?? '', audience: a?.audience ?? 'ALL', pinned: a?.pinned ?? false, expiresAt: a?.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : '' }); };
+  const valid = draft.title.trim().length >= 3 && draft.body.trim().length >= 3;
   return (
-    <div className="detail-grid">
-      <section className="panel"><div className="panel-head"><h2>Announcements</h2></div>
-        {!items ? <Pending error={error} /> : items.length ? <ul className="plain-list">{items.map((a) => <li key={a.id} className="flex between"><span>{a.pinned && <span className="badge waiting_for_user">Pinned</span>} <strong>{a.title}</strong> <small className="muted">{a.audience === 'STAFF' ? 'support team' : 'everyone'} · {when(a.publishedAt)}{a.expiresAt ? ` · until ${when(a.expiresAt)}` : ''}</small></span><span className="flex"><button disabled={busy} onClick={() => setEditing(a)}>Edit</button><button className="danger" disabled={busy} onClick={() => void act(async () => { await api(`/admin/announcements/${a.id}`, 'DELETE'); }, 'Announcement removed.')}>Remove</button></span></li>)}</ul> : <p className="muted fine">Nothing published.</p>}
+    <div className="ann-layout">
+      <section className="panel ann-list-panel"><div className="panel-head"><h2>Announcements</h2><span className="muted">{items?.length ?? 0}</span></div>
+        {!items ? <Pending error={error} /> : items.length ? <ul className="plain-list ann-admin-list">{items.map((a) => (
+          <li key={a.id} className={editing?.id === a.id ? 'is-selected' : ''}>
+            <span className="ann-row-main">{a.pinned && <span className="badge waiting_for_user plain">Pinned</span>} <strong>{a.title}</strong> <small className="muted">{a.audience === 'STAFF' ? 'support team' : 'everyone'} · {when(a.publishedAt)}{a.expiresAt ? ` · until ${when(a.expiresAt)}` : ''}</small></span>
+            <span className="flex"><button disabled={busy} onClick={() => start(a)}>Edit</button><button className="danger" disabled={busy} onClick={() => void act(async () => { await api(`/admin/announcements/${a.id}`, 'DELETE'); if (editing?.id === a.id) start(null); }, 'Announcement removed.')}>Remove</button></span>
+          </li>
+        ))}</ul> : <p className="muted fine">Nothing published.</p>}
       </section>
-      <form className="panel properties" key={editing?.id ?? 'new'} onSubmit={(e) => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.currentTarget)) as Record<string, string>; const form = e.currentTarget; void act(async () => { const body = { title: f.title, body: f.body, audience: f.audience, pinned: f.pinned === 'on', expiresAt: f.expiresAt ? new Date(f.expiresAt).toISOString() : null }; if (editing) await api(`/admin/announcements/${editing.id}`, 'PUT', body); else await api('/admin/announcements', 'POST', body); form.reset(); setEditing(null); }, editing ? 'Announcement updated.' : 'Announcement published.'); }}>
+      <form className="panel properties ann-form" key={editing?.id ?? 'new'} noValidate onSubmit={(e) => { e.preventDefault(); if (!valid) return; void act(async () => { const body = { title: draft.title.trim(), body: draft.body.trim(), audience: draft.audience, pinned: draft.pinned, expiresAt: draft.expiresAt ? new Date(draft.expiresAt).toISOString() : null }; if (editing) await api(`/admin/announcements/${editing.id}`, 'PUT', body); else await api('/admin/announcements', 'POST', body); start(null); }, editing ? 'Announcement updated.' : 'Announcement published.'); }}>
         <h2>{editing ? 'Edit announcement' : 'Publish an announcement'}</h2>
-        <label>Title<input name="title" required minLength={3} maxLength={120} defaultValue={editing?.title ?? ''} /></label>
-        <label>Message<textarea name="body" required minLength={3} maxLength={4000} rows={5} defaultValue={editing?.body ?? ''} /></label>
+        <label>Title <span className="req">*</span><input name="title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={120} aria-invalid={draft.title.length > 0 && draft.title.trim().length < 3} />{draft.title.length > 0 && draft.title.trim().length < 3 && <small className="field-error">At least 3 characters.</small>}</label>
+        <label>Message <span className="req">*</span><textarea name="body" value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} maxLength={4000} rows={6} /><small className="field-help">{draft.body.length} / 4000</small></label>
         <div className="two-grid">
-          <label>Audience<select aria-label="Audience" name="audience" defaultValue={editing?.audience ?? 'ALL'}><option value="ALL">Everyone</option><option value="STAFF">Support team only</option></select></label>
-          <label>Expires<input type="datetime-local" name="expiresAt" defaultValue={editing?.expiresAt ? new Date(editing.expiresAt).toISOString().slice(0, 16) : ''} /></label>
-          <label className="check"><input type="checkbox" name="pinned" defaultChecked={editing?.pinned ?? false} /> Pin to the top</label>
+          <label>Audience<select aria-label="Audience" name="audience" value={draft.audience} onChange={(e) => setDraft({ ...draft, audience: e.target.value })}><option value="ALL">Everyone</option><option value="STAFF">Support team only</option></select></label>
+          <label>Expires<input type="datetime-local" name="expiresAt" value={draft.expiresAt} onChange={(e) => setDraft({ ...draft, expiresAt: e.target.value })} /></label>
+          <label className="check"><input type="checkbox" name="pinned" checked={draft.pinned} onChange={(e) => setDraft({ ...draft, pinned: e.target.checked })} /> Pin to the top</label>
         </div>
-        <div className="flex"><button className="primary" disabled={busy}>{editing ? 'Save' : 'Publish'}</button>{editing && <button type="button" onClick={() => setEditing(null)}>Cancel</button>}</div>
+        <div className="flex"><button className="primary" disabled={busy || !valid}>{editing ? 'Save' : 'Publish announcement'}</button>{editing && <button type="button" onClick={() => start(null)}>Cancel</button>}</div>
       </form>
+      <aside className="panel ann-preview" aria-label="Preview">
+        <div className="panel-head"><h2>Preview</h2><span className={`req-status ${editing ? 'ok' : 'neutral'}`}><i />{editing ? 'Published' : 'Draft'}</span></div>
+        <div className="ann-preview-card">
+          <span className="gloss-tile sm indigo" aria-hidden="true"><Icon name="flag" size={16} /></span>
+          <strong>{draft.title.trim() || 'Announcement title'}</strong>
+          <small className="muted">{draft.audience === 'STAFF' ? 'Support team only' : 'Everyone'}{draft.pinned ? ' · pinned' : ''}{draft.expiresAt ? ` · until ${new Date(draft.expiresAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}` : ''}</small>
+          <p>{draft.body.trim() || 'The message appears on My Space exactly as written here.'}</p>
+        </div>
+        <p className="muted fine">This is how it reads on My Space for the chosen audience. Nothing is sent until you publish.</p>
+      </aside>
     </div>
   );
 }

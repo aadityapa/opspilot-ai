@@ -85,7 +85,8 @@ export function AnalyticsPage({ user, refresh, route }: { user: CurrentUser; ref
           </section>
 
           {/* ── Trend ───────────────────────────────────────────────── */}
-          <section className="emp-surface si-trend">
+          <nav className="si-jump" aria-label="Sections"><a href="#si-trend">Trend</a><a href="#si-demand">Demand</a><a href="#si-sla">SLA</a><a href="#si-resolution">Resolution</a><a href="#si-csat">Experience</a><a href="#si-team">Team workload</a></nav>
+          <section className="emp-surface si-trend" id="si-trend">
             <div className="section-title">
               <div><h2>Service performance</h2><p className="muted t-sm">Day by day across the period. Hover for the figures behind each point.</p></div>
               <div className="seg" role="group" aria-label="Metric">
@@ -104,7 +105,7 @@ export function AnalyticsPage({ user, refresh, route }: { user: CurrentUser; ref
 
           <div className="si-grid">
             {/* ── Demand ────────────────────────────────────────────── */}
-            <section className="emp-surface">
+            <section className="emp-surface" id="si-demand">
               <div className="section-title"><div><h2>Service demand</h2><p className="muted t-sm">What was raised in the period, and by whom.</p></div><a href={`#/reports/tickets?${params}`}>Report →</a></div>
               {a.demand.byDepartment.length ? (
                 <>
@@ -145,7 +146,7 @@ export function AnalyticsPage({ user, refresh, route }: { user: CurrentUser; ref
             </section>
 
             {/* ── SLA ───────────────────────────────────────────────── */}
-            <section className="emp-surface">
+            <section className="emp-surface" id="si-sla">
               <div className="section-title"><div><h2>SLA analysis</h2><p className="muted t-sm">Where the misses are, not just how green the average is.</p></div><a href={`#/reports/sla?${params}`}>Report →</a></div>
               <dl className="si-facts">
                 <div><dt>Resolution</dt><dd>{pct(a.sla.resolutionCompliancePercent)}<small>{a.sla.resolutionMeasured} measured</small></dd></div>
@@ -180,7 +181,7 @@ export function AnalyticsPage({ user, refresh, route }: { user: CurrentUser; ref
             </section>
 
             {/* ── Resolution ────────────────────────────────────────── */}
-            <section className="emp-surface">
+            <section className="emp-surface" id="si-resolution">
               <div className="section-title"><div><h2>Resolution performance</h2><p className="muted t-sm">How long work takes, and how old what is left is.</p></div><a href={`#/reports/resolution?${params}`}>Report →</a></div>
               <dl className="si-facts">
                 <div><dt>Time to resolve</dt><dd>{hm(a.resolution.mttrMinutes)}<small>{a.resolution.previousMttrMinutes !== null ? `was ${hm(a.resolution.previousMttrMinutes)}` : 'no previous period'}</small></dd></div>
@@ -206,7 +207,7 @@ export function AnalyticsPage({ user, refresh, route }: { user: CurrentUser; ref
             </section>
 
             {/* ── Experience ───────────────────────────────────────── */}
-            <section className="emp-surface">
+            <section className="emp-surface" id="si-csat">
               <div className="section-title"><div><h2>Employee experience</h2><p className="muted t-sm">Ratings left by requesters when their work was completed.</p></div><a href={`#/reports/csat?${params}`}>Report →</a></div>
               {a.csat.responses ? (
                 <>
@@ -232,7 +233,7 @@ export function AnalyticsPage({ user, refresh, route }: { user: CurrentUser; ref
           </div>
 
           {/* ── Team ─────────────────────────────────────────────────── */}
-          <section className="emp-surface">
+          <section className="emp-surface" id="si-team">
             <div className="section-title"><div><h2>Team workload</h2><p className="muted t-sm">Operational context per engineer for the period. Listed alphabetically — this is not a ranking.</p></div><a href={`#/reports/agents?${params}`}>Report →</a></div>
             {a.team.length ? (
               <div className="table-scroll">

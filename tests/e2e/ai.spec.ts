@@ -162,7 +162,7 @@ test('the AI panel stays usable on a narrow screen', async ({ page }) => {
   await login(page, 'engineer');
   await openTicket(page, 'VPN disconnects during video calls');
   // On a phone the intelligence panel is a drawer; open it to reach the AI controls.
-  await page.getByRole('button', { name: 'Toggle intelligence panel' }).click();
+  await page.getByRole('button', { name: 'Toggle details panel' }).click();
   await expect(page.locator('.ai-panel').getByRole('button', { name: 'Analyze ticket' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.goto('/#/ask');

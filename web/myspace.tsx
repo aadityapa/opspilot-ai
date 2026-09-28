@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import heroUrl from './assets/mountain-night-hero.jpg';
 import { api } from './api';
 import { useRecord } from './operations';
 import { labels, type Announcement, type Approval, type CatalogItem, type CurrentUser, type Notification, type OperationsSummary, type SearchResults, type Ticket } from '../shared/model';
-import { icon as catalogIcon } from './catalog';
+import { GlossIcon, icon as catalogIcon } from './catalog';
 import { Icon } from './ui/icons';
 import { EmptyState, Skeleton, fmtAgo, fmtDay, ticketKey } from './ui';
 import { SlaMark, StatusMark } from './ui/marks';
@@ -60,7 +61,7 @@ export function HomePage({ user, refresh }: { user: CurrentUser; refresh: number
 
   return (
     <div className="emp myspace">
-      <div className="emp-hero">
+      <div className="emp-hero" style={{ ['--hero-img' as string]: `url(${heroUrl})` }}>
         <header className="emp-head">
           <div>
             <p className="eyebrow">{greeting.toUpperCase()}</p>
@@ -73,6 +74,13 @@ export function HomePage({ user, refresh }: { user: CurrentUser; refresh: number
           </div>
         </header>
         <HelpSearch catalog={catalog ?? []} staff={staff} />
+        <ul className="hero-stats" aria-label="My work at a glance">
+          {staff && <li><a href="#/tickets?assigned=mine&open=true"><strong>{assigned ? assigned.total : '…'}</strong><span>assigned to me</span></a></li>}
+          <li><a href="#/requests"><strong>{requested ? openRequests : '…'}</strong><span>open request{openRequests === 1 ? '' : 's'}</span></a></li>
+          <li className={approvals?.length ? 'warn' : ''}><a href="#/approvals"><strong>{approvals ? approvals.length : '…'}</strong><span>need{approvals?.length === 1 ? 's' : ''} your approval</span></a></li>
+          <li className={inbox?.unread ? 'info' : ''}><a href="#/notifications"><strong>{inbox ? inbox.unread : '…'}</strong><span>unread</span></a></li>
+          {staff && <li className={me && me.atRisk + me.breached ? 'crit' : ''}><a href="#/tickets?assigned=mine&sla=at-risk"><strong>{ops ? (me ? me.atRisk + me.breached : 0) : '…'}</strong><span>SLA attention</span></a></li>}
+        </ul>
       </div>
 
       {/* The two doors into the catalog: an issue (no approval, straight to the desk) or a service. */}
@@ -89,17 +97,19 @@ export function HomePage({ user, refresh }: { user: CurrentUser; refresh: number
         </a>
       </nav>
 
-      <section className="mywork-strip" aria-label="My work">
-        <p className="eyebrow strip-eyebrow">My work</p>
-        {staff && <a className="strip-cell" href="#/tickets?assigned=mine&open=true"><strong>{assigned ? assigned.total : '…'}</strong><span>Assigned to me</span></a>}
-        <a className={`strip-cell ${approvals?.length ? 'warn' : ''}`} href="#/approvals"><strong>{approvals ? approvals.length : '…'}</strong><span>Needs approval</span></a>
-        <a className="strip-cell" href="#/requests"><strong>{requested ? openRequests : '…'}</strong><span>My requests</span></a>
-        <a className={`strip-cell ${inbox?.unread ? 'info' : ''}`} href="#/notifications"><strong>{inbox ? inbox.unread : '…'}</strong><span>Unread</span></a>
-        {staff && <a className={`strip-cell ${me && me.atRisk + me.breached ? 'crit' : ''}`} href="#/tickets?assigned=mine&sla=at-risk"><strong>{ops ? (me ? me.atRisk + me.breached : 0) : '…'}</strong><span>SLA attention</span></a>}
-      </section>
-
       <div className="emp-grid">
         <div className="emp-main">
+          {staff ? <MyWork assigned={assigned?.items ?? []} following={following?.items ?? []} requested={requested?.items ?? []} loading={!assigned} /> : (
+            <section className="emp-surface">
+              <div className="section-title"><h2>My requests</h2><a href="#/requests">All requests →</a></div>
+              {!requested ? <Skeleton rows={3} /> : requested.items.length ? (
+                <ul className="req-list compact">{requested.items.map((t) => (
+                  <li className="req-row" key={t.id}><a href={`#/requests/${t.id}`}><span className="req-main"><strong>{t.catalogItem?.name ?? t.title}</strong><small>{ticketKey(t)} · submitted {fmtDay(t.createdAt)}</small></span><span className="req-next"><small>Next</small>{nextStep(t)}</span><RequestBadge t={t} /></a></li>
+                ))}</ul>
+              ) : <EmptyState icon="inbox" title="No open requests" action={<a className="btn" href="#/tickets/new">Request something</a>}>Everything you ask IT for will be tracked here, step by step.</EmptyState>}
+            </section>
+          )}
+
           <section className="emp-surface">
             <div className="section-title"><h2>For you</h2><span className="muted t-caption">{forYou.length ? `${forYou.length} item${forYou.length === 1 ? '' : 's'}` : 'Nothing waiting on you'}</span></div>
             {forYou.length ? (
@@ -114,17 +124,6 @@ export function HomePage({ user, refresh }: { user: CurrentUser; refresh: number
               </ul>
             ) : <p className="calm">You are up to date. New approvals, replies and mentions will appear here.</p>}
           </section>
-
-          {staff ? <MyWork assigned={assigned?.items ?? []} following={following?.items ?? []} requested={requested?.items ?? []} loading={!assigned} /> : (
-            <section className="emp-surface">
-              <div className="section-title"><h2>My requests</h2><a href="#/requests">All requests →</a></div>
-              {!requested ? <Skeleton rows={3} /> : requested.items.length ? (
-                <ul className="req-list compact">{requested.items.map((t) => (
-                  <li className="req-row" key={t.id}><a href={`#/requests/${t.id}`}><span className="req-main"><strong>{t.catalogItem?.name ?? t.title}</strong><small>{ticketKey(t)} · submitted {fmtDay(t.createdAt)}</small></span><span className="req-next"><small>Next</small>{nextStep(t)}</span><RequestBadge t={t} /></a></li>
-                ))}</ul>
-              ) : <EmptyState icon="inbox" title="No open requests" action={<a className="btn" href="#/tickets/new">Request something</a>}>Everything you ask IT for will be tracked here, step by step.</EmptyState>}
-            </section>
-          )}
 
           {announcements && announcements.length > 0 && (
             <section className="emp-surface">
@@ -142,9 +141,9 @@ export function HomePage({ user, refresh }: { user: CurrentUser; refresh: number
             {!catalog ? <Skeleton rows={3} /> : byCategory.length ? (
               <ul className="launcher">
                 {byCategory.slice(0, 6).map(({ c, items }) => (
-                  <li key={c.id}><a href={`#/tickets/new?category=${c.id}`}><span className="launch-icon" aria-hidden="true">{catalogIcon(items[0].icon)}</span><span className="launch-body"><strong>{c.name}</strong><small>{items.length === 1 ? items[0].name : `${items.length} services · ${items.slice(0, 2).map((i) => i.name).join(', ')}`}</small></span><Icon name="chevron" size={16} /></a></li>
+                  <li key={c.id}><a href={`#/tickets/new?category=${c.id}`}><GlossIcon name={items[0].icon} size="sm" category={c.name} /><span className="launch-body"><strong>{c.name}</strong><small>{items.length === 1 ? items[0].name : `${items.length} services · ${items.slice(0, 2).map((i) => i.name).join(', ')}`}</small></span><Icon name="chevron" size={16} /></a></li>
                 ))}
-                <li><a href="#/tickets/new?service=issue"><span className="launch-icon" aria-hidden="true"><Icon name="alert" /></span><span className="launch-body"><strong>Report an IT issue</strong><small>Something is broken or not working</small></span><Icon name="chevron" size={16} /></a></li>
+                <li><a href="#/tickets/new?service=issue"><span className="gloss-tile sm red" aria-hidden="true"><Icon name="alert" size={18} /></span><span className="launch-body"><strong>Report an IT issue</strong><small>Something is broken or not working</small></span><Icon name="chevron" size={16} /></a></li>
               </ul>
             ) : <p className="muted t-sm">No services have been published yet. <a href="#/tickets/new">Report an issue</a> instead.</p>}
           </section>

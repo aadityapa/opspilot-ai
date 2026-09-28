@@ -28,11 +28,31 @@ export const ICONS: Record<string, string> = {
   bug: 'M8 9a4 4 0 0 1 8 0v5a4 4 0 0 1-8 0z M3 13h5 M16 13h5 M5 7l3 2 M19 7l-3 2 M5 19l3-2 M19 19l-3-2',
   rocket: 'M12 3c3 2 5 6 5 10l-2 3h-6l-2-3c0-4 2-8 5-10z M9 16l-3 4 M15 16l3 4 M12 9h.01',
 };
-export const icon = (name: string) => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+export const icon = (name: string, size = 22) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d={ICONS[name] ?? ICONS.box} />
   </svg>
 );
+
+/**
+ * One hue per service area, used by every glossy tile that stands for a category or a service so
+ * the same area looks the same on My Space, in the catalog, in Knowledge and in the reports library.
+ */
+export const tileHue = (name: string | null | undefined, fallback = 'indigo') => {
+  const n = (name ?? '').toLowerCase();
+  if (/network|wi-?fi|vpn/.test(n)) return 'cyan';
+  if (/access|identity|key|folder|permission/.test(n)) return 'violet';
+  if (/hardware|laptop|device|monitor|phone/.test(n)) return 'indigo';
+  if (/software|cloud|licen|install/.test(n)) return 'teal';
+  if (/security|shield|two-factor|mfa/.test(n)) return 'green';
+  if (/employee|people|onboard|hr|starter/.test(n)) return 'amber';
+  if (/issue|incident|broken|alert/.test(n)) return 'red';
+  return fallback;
+};
+/** A catalog icon on a glossy material tile. `hue` is derived from the category unless given. */
+export function GlossIcon({ name, hue, size = 'md', category }: { name: string; hue?: string; size?: 'sm' | 'md' | 'lg'; category?: string | null }) {
+  return <span className={`gloss-tile ${size === 'md' ? '' : size} ${hue ?? tileHue(category ?? name)}`} aria-hidden="true">{icon(name, size === 'lg' ? 30 : size === 'sm' ? 18 : 22)}</span>;
+}
 
 /** Knowledge articles that match what the person is typing, shown before they submit. */
 export function SuggestedArticles({ text }: { text: string }) {
@@ -225,14 +245,14 @@ function Marketplace({ catalog, categories, recent, initialQ, categoryId }: { ca
         <>
           {!categoryId && recentServices.length > 0 && (
             <section className="cat-block"><div className="section-title"><h2>Recently used</h2><span className="muted t-caption">From your own requests</span></div>
-              <div className="service-chips">{recentServices.map((c) => <a key={c.id} className="service-chip" href={`#/tickets/new?service=${c.id}`}><span className="hr-icon">{icon(c.icon)}</span><span><strong>{c.name}</strong><small>{approvalWord(c)}</small></span></a>)}</div>
+              <div className="service-chips">{recentServices.map((c) => <a key={c.id} className="service-chip" href={`#/tickets/new?service=${c.id}`}><GlossIcon name={c.icon} size="sm" category={c.category?.name} /><span><strong>{c.name}</strong><small>{approvalWord(c)}</small></span></a>)}</div>
             </section>
           )}
           {!categoryId && (
             <section className="cat-block"><div className="section-title"><h2>Categories</h2></div>
               <ul className="cat-grid">
-                {allGroups.map(({ c, items }) => <li key={c.id}><a href={`#/tickets/new?category=${c.id}`}><span className="hr-icon">{icon(items[0].icon)}</span><span><strong>{c.name}</strong><small>{items.length} service{items.length === 1 ? '' : 's'} · {items.slice(0, 2).map((i) => i.name).join(', ')}</small></span><Icon name="chevron" size={16} /></a></li>)}
-                <li><a href="#/tickets/new?service=issue" className="issue"><span className="hr-icon"><Icon name="alert" size={18} /></span><span><strong>Report an IT issue</strong><small>Something is broken, slow or not working</small></span><Icon name="chevron" size={16} /></a></li>
+                {allGroups.map(({ c, items }) => <li key={c.id}><a href={`#/tickets/new?category=${c.id}`}><GlossIcon name={items[0].icon} category={c.name} /><span><strong>{c.name}</strong><small>{items.length} service{items.length === 1 ? '' : 's'} · {items.slice(0, 2).map((i) => i.name).join(', ')}</small></span><Icon name="chevron" size={16} /></a></li>)}
+                <li><a href="#/tickets/new?service=issue" className="issue"><span className="gloss-tile red" aria-hidden="true"><Icon name="alert" size={20} /></span><span><strong>Report an IT issue</strong><small>Something is broken, slow or not working</small></span><Icon name="chevron" size={16} /></a></li>
               </ul>
             </section>
           )}
@@ -246,13 +266,13 @@ function Marketplace({ catalog, categories, recent, initialQ, categoryId }: { ca
   );
 }
 
-function ServiceList({ items }: { items: CatalogItem[]; categories: Category[] }) {
+function ServiceList({ items, categories }: { items: CatalogItem[]; categories: Category[] }) {
   return (
     <ul className="service-list">
       {items.map((c) => (
         <li key={c.id}>
           <a href={`#/tickets/new?service=${c.id}`} className="service-item">
-            <span className="hr-icon" aria-hidden="true">{icon(c.icon)}</span>
+            <GlossIcon name={c.icon} category={c.category?.name ?? categories.find((x) => x.id === c.categoryId)?.name} />
             <span className="svc-body"><strong>{c.name}</strong><small>{c.description}</small></span>
             <span className="svc-meta"><span>{labels[c.type]}</span><span className={c.requiresApproval ? 'warn-text' : ''}>{approvalWord(c)}</span></span>
             <span className="svc-cta">Start request<Icon name="arrow" size={13} /></span>
@@ -271,7 +291,7 @@ function ServiceDetail({ item, user, recent }: { item: CatalogItem; user: Curren
       <div className="reqflow-grid">
         <div className="reqflow-main">
           <section className="emp-surface">
-            <div className="svc-hero"><span className="hr-icon large" aria-hidden="true">{icon(item.icon)}</span><div><p className="eyebrow">{item.category?.name ?? labels[item.type]}</p><h1>{item.name}</h1><p className="muted">{item.description}</p></div></div>
+            <div className="svc-hero"><GlossIcon name={item.icon} size="lg" category={item.category?.name} /><div><p className="eyebrow">{item.category?.name ?? labels[item.type]}</p><h1>{item.name}</h1><p className="muted">{item.description}</p></div></div>
             <dl className="svc-facts">
               <div><dt>Approval</dt><dd>{item.requiresApproval ? `${approvalWord(item)} · ${approverName(item, user)} decides before IT starts` : 'None needed — goes straight to IT'}</dd></div>
               <div><dt>Handled as</dt><dd>{labels[item.type]}{item.category ? ` · ${item.category.name}` : ''}</dd></div>

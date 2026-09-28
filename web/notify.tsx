@@ -31,16 +31,20 @@ export function NotificationsCenterPage({ user, act, busy, refresh }: { user: Cu
   const staff = user.role !== 'EMPLOYEE';
   const [page, setPage] = useState(1);
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('all');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data, error } = useRecord<Page<Notification> & { unread: number }>(`/notifications?page=${page}&pageSize=30`, refresh);
   const { data: prefs } = useRecord<NotifyPrefs>('/notifications/preferences', refresh);
   const current = TABS.find((t) => t.key === tab) ?? TABS[0];
   const items = (data?.items ?? []).filter(current.match);
   const groups = (['Today', 'Yesterday', 'Earlier'] as const).map((g) => ({ g, rows: items.filter((n) => dayBucket(n.createdAt) === g) })).filter((x) => x.rows.length);
+  const selected = items.find((n) => n.id === selectedId) ?? items[0] ?? null;
+  const markRead = (n: Notification) => { if (!n.readAt) void act(async () => { await api('/notifications/read', 'POST', { ids: [n.id] }); }, ''); };
+  const select = (n: Notification) => { setSelectedId(n.id); markRead(n); };
   return (
     <div className="emp notif-center">
       <header className="emp-head">
         <div><p className="eyebrow">NOTIFICATIONS</p><h1>Your inbox</h1><p className="muted">{data ? (data.unread ? `${data.unread} unread.` : 'All caught up.') : ''} Replies, decisions, mentions and updates addressed to you. Internal notes never appear here.</p></div>
-        <div className="page-actions">{data && data.unread > 0 && <button disabled={busy} onClick={() => void act(async () => { await api('/notifications/read', 'POST', {}); }, 'All marked as read.')}><Icon name="check" size={15} />Mark all read ({data.unread})</button>}</div>
+        <div className="page-actions">{data && data.unread > 0 && <button disabled={busy} onClick={() => void act(async () => { await api('/notifications/read', 'POST', {}); }, 'All marked as read.')}><Icon name="check" size={15} />Mark all read</button>}</div>
       </header>
       <div className="emp-grid">
         <section className="emp-main">
@@ -52,8 +56,8 @@ export function NotificationsCenterPage({ user, act, busy, refresh }: { user: Cu
               <section key={g} className="inbox-group" aria-label={g}>
                 <p className="eyebrow">{g.toUpperCase()}</p>
                 <ul>{rows.map((n) => (
-                  <li key={n.id} className={n.readAt ? '' : 'unread'}>
-                    <a href={notificationHref(n, staff)} onClick={() => { if (!n.readAt) void api('/notifications/read', 'POST', { ids: [n.id] }).catch(() => {}); }}>
+                  <li key={n.id} className={`${n.readAt ? '' : 'unread'} ${selected?.id === n.id ? 'is-selected' : ''}`}>
+                    <a href={`#/notifications?sel=${n.id}`} aria-current={selected?.id === n.id ? 'true' : undefined} onClick={(e) => { e.preventDefault(); select(n); }}>
                       <span className={`kind ${n.kind.toLowerCase()}`} aria-hidden="true">{kindIcon(n.kind)}</span>
                       <span className="inbox-text">
                         <span className="inbox-title"><strong>{notificationWord(n.kind, staff)}</strong><small className="muted">{fmtAgo(n.createdAt)}</small></span>
@@ -61,7 +65,7 @@ export function NotificationsCenterPage({ user, act, busy, refresh }: { user: Cu
                         <small className="muted">{ticketKey(n.ticket)}{n.ticket.title ? ` · ${n.ticket.title}` : ''}</small>
                       </span>
                     </a>
-                    {!n.readAt && <button className="text-btn btn-sm" disabled={busy} onClick={() => void act(async () => { await api('/notifications/read', 'POST', { ids: [n.id] }); }, '')}>Mark read</button>}
+                    {!n.readAt && <button className="text-btn btn-sm" disabled={busy} onClick={() => markRead(n)}>Mark read</button>}
                   </li>))}</ul>
               </section>
             )) : <EmptyState icon="bell" title={tab === 'all' ? 'Nothing to catch up on' : `No ${current.label.toLowerCase()} notifications`}>{tab === 'all' ? 'When someone replies, decides or mentions you, it lands here.' : undefined}</EmptyState>}
@@ -69,6 +73,20 @@ export function NotificationsCenterPage({ user, act, busy, refresh }: { user: Cu
           </div>
         </section>
         <aside className="emp-side">
+          {selected && (
+            <section className="emp-surface notif-detail" aria-label="Selected notification" key={selected.id}>
+              <div className="nd-head"><span className={`kind ${selected.kind.toLowerCase()}`} aria-hidden="true">{kindIcon(selected.kind)}</span><div><p className="eyebrow">{notificationWord(selected.kind, staff)}</p><h2>{notificationLine(selected, staff)}</h2><small className="muted">{new Date(selected.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}{selected.readAt ? ' · read' : ' · unread'}</small></div></div>
+              {selected.text.split('\n').slice(1).filter(Boolean).length > 0 && <p className="nd-text">{selected.text.split('\n').slice(1).join(' ')}</p>}
+              <div className="nd-ticket">
+                <span className="mono-id">{ticketKey(selected.ticket)}</span>
+                <span className="nd-ticket-title">{selected.ticket.title ?? 'Ticket'}</span>
+              </div>
+              <div className="nd-actions">
+                <a className="primary" href={notificationHref(selected, staff)} onClick={() => markRead(selected)}>{staff && !['APPROVAL_DECIDED', 'SURVEY_REQUEST'].includes(selected.kind) ? (selected.kind === 'APPROVAL_REQUESTED' ? 'Review approval' : 'Open ticket') : (selected.kind === 'APPROVAL_REQUESTED' ? 'Review approval' : 'View request')}<Icon name="arrow" size={14} /></a>
+                {!selected.readAt && <button disabled={busy} onClick={() => markRead(selected)}>Mark as read</button>}
+              </div>
+            </section>
+          )}
           <section className="emp-surface prefs-surface">
             <div className="panel-head"><div><h2>What you want to hear about</h2><p className="muted">Approval requests addressed to you are always delivered.</p></div></div>
             {!prefs ? <Pending error="" /> : PREF_GROUPS.map((g) => {

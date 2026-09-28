@@ -25,16 +25,17 @@ export function TicketWorkspace({ id, user, refresh, busy, act, route }: { id: s
   const { data: categories } = useRecord<Category[]>('/categories');
   const staff = user.role !== 'EMPLOYEE';
   const { data: engineers } = useRecord<Person[]>(staff ? '/engineers' : '/categories');
-  const [tab, setTab] = useState<'conversation' | 'activity'>('conversation');
+  const [tab, setTab] = useState<'conversation' | 'activity' | 'approvals' | 'related'>('conversation');
   const [composer, setComposer] = useState<'reply' | 'note'>(() => (new URLSearchParams(route.split('?')[1] ?? '').get('compose') === 'note' ? 'note' : 'reply'));
   const [reply, setReply] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [resolving, setResolving] = useState(false);
-  const [contextOpen, setContextOpen] = useState(false);
   const [intelOpen, setIntelOpen] = useState(false);
   const replyRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (composer === 'note') setTimeout(() => document.getElementById('internal-note')?.focus(), 50); }, [composer]);
+  // The details drawer (narrow screens) closes on Escape like every other overlay.
+  useEffect(() => { if (!intelOpen) return; const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setIntelOpen(false); }; document.addEventListener('keydown', key); return () => document.removeEventListener('keydown', key); }, [intelOpen]);
 
   if (error) return <div className="alert error" role="alert">{error} <a className="btn-sm btn" href={deskReturnHref()}>Back to queue</a></div>;
   if (!t) return <WorkspaceSkeleton />;
@@ -45,6 +46,7 @@ export function TicketWorkspace({ id, user, refresh, busy, act, route }: { id: s
   const canResolve = staff && !closed && transitions[t.status].includes('RESOLVED');
   const replies = t.replies ?? [];
 
+  const approvalsCount = t.approvals?.length ?? 0;
   return (
     <div className="tw">
       <div className="tw-return"><a className="back-link" href={deskReturnHref()}><Icon name="arrowLeft" size={14} />Back to queue</a><span className="muted t-caption">Your filters, sort and page are preserved</span></div>
@@ -82,8 +84,7 @@ export function TicketWorkspace({ id, user, refresh, busy, act, route }: { id: s
             <button onClick={() => void act(async () => { await api(`/tickets/${id}/watch`, t.watching ? 'DELETE' : 'POST', t.watching ? undefined : {}); }, t.watching ? 'You stopped following this ticket.' : 'You are following this ticket.')}>{t.watching ? 'Unfollow' : 'Follow'}</button>
             <a href="#/board">Open the board</a>
           </Menu>
-          <button className="icon-btn tw-toggle" aria-label="Toggle context panel" aria-pressed={contextOpen} onClick={() => setContextOpen(!contextOpen)}><Icon name="sliders" /></button>
-          <button className="icon-btn tw-toggle" aria-label="Toggle intelligence panel" aria-pressed={intelOpen} onClick={() => setIntelOpen(!intelOpen)}><Icon name="spark" /></button>
+          <button className="icon-btn tw-toggle" aria-label="Toggle details panel" aria-pressed={intelOpen} onClick={() => setIntelOpen(!intelOpen)}><Icon name="sliders" /></button>
         </div>
       </header>
 
@@ -97,57 +98,55 @@ export function TicketWorkspace({ id, user, refresh, busy, act, route }: { id: s
         </div>
       )}
 
-      <div className={`tw-grid ${contextOpen ? 'context-open' : ''} ${intelOpen ? 'intel-open' : ''}`}>
-        {/* ── CONTEXT ─────────────────────────────────────────────────── */}
-        <aside className="tw-context" aria-label="Ticket context">
-          <ContextPanel t={t} user={user} act={act} busy={busy} categories={categories ?? []} engineers={engineers ?? []} />
-          <RequesterPanel t={t} staff={staff} />
-        </aside>
-
-        {/* ── WORKSPACE ───────────────────────────────────────────────── */}
+      <div className={`tw-grid ${intelOpen ? 'intel-open' : ''}`}>
+        {/* ── WORKSPACE: the conversation is the work ─────────────────── */}
         <main className="tw-center" aria-label="Ticket workspace">
-          <section className="description-block">
-            <div className="section-title"><h2>Description</h2><span className="muted t-caption">{t.requester.name} · {when(t.createdAt)}</span></div>
-            <p className="description">{t.description}</p>
-            {t.formData && Object.keys(t.formData).length > 0 && (
-              <dl className="properties compact form-answers">
-                {Object.entries(t.formData).map(([k, v]) => <div key={k}><dt>{k.replace(/_/g, ' ')}</dt><dd>{typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v)}</dd></div>)}
-              </dl>
-            )}
-            <AttachmentsInline t={t} user={user} act={act} busy={busy} />
-          </section>
-
           <CsatPrompt ticket={t} user={user} act={act} busy={busy} />
 
           <div className="tabs tw-tabs" role="tablist" aria-label="Workspace">
-            <button role="tab" aria-selected={tab === 'conversation'} className={tab === 'conversation' ? 'active' : ''} onClick={() => setTab('conversation')}>Conversation<span className="count">{replies.length}</span></button>
+            <button role="tab" aria-selected={tab === 'conversation'} className={tab === 'conversation' ? 'active' : ''} onClick={() => setTab('conversation')}>Conversation<span className="count">{replies.length + 1}</span></button>
             <button role="tab" aria-selected={tab === 'activity'} className={tab === 'activity' ? 'active' : ''} onClick={() => setTab('activity')}>Activity</button>
+            {approvalsCount > 0 && <button role="tab" aria-selected={tab === 'approvals'} className={tab === 'approvals' ? 'active' : ''} onClick={() => setTab('approvals')}>Approvals<span className="count">{approvalsCount}</span></button>}
+            {staff && <button role="tab" aria-selected={tab === 'related'} className={tab === 'related' ? 'active' : ''} onClick={() => setTab('related')}>Related</button>}
           </div>
 
-          {tab === 'conversation' ? (
+          {tab === 'conversation' && (
             <>
               <section className="conversation" aria-label="Conversation">
-                {replies.length ? (
-                  <ol className="thread">
-                    {replies.map((r) => (
-                      <li className="msg reply" key={r.id}>
-                        <Avatar name={r.author.name} size={32} />
-                        <div className="msg-body">
-                          <div className="msg-head"><strong>{r.author.name}</strong><span className="muted">{r.author.id === t.requesterId ? 'Requester' : labels[r.author.role]} · {clock(r.createdAt)} · {new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{r.editedAt ? ' · edited' : ''}</span>
-                            {r.author.id === user.id && !closed && editing !== r.id && <button className="msg-edit" onClick={() => { setEditing(r.id); setEditText(r.body); }}>Edit</button>}
-                          </div>
-                          {editing === r.id ? (
-                            <form className="composer-form" onSubmit={(e) => { e.preventDefault(); void act(async () => { await api(`/tickets/${id}/replies/${r.id}`, 'PATCH', { body: editText }); setEditing(null); }, 'Reply updated.'); }}>
-                              <textarea aria-label="Edit reply" value={editText} onChange={(e) => setEditText(e.target.value)} rows={3} maxLength={10000} required />
-                              <div className="composer-actions"><button type="button" className="text-btn" onClick={() => setEditing(null)}>Cancel</button><span className="grow" /><button className="primary" disabled={busy}>Save</button></div>
-                            </form>
-                          ) : <div className="msg-text"><MentionText body={r.body} mentions={r.mentions} /></div>}
-                          {r.attachments && r.attachments.length > 0 && <ul className="msg-files">{r.attachments.map((a: Attachment) => <li key={a.id}><a href={`/api/tickets/${t.id}/attachments/${a.id}`} download={a.filename}><Icon name="paperclip" size={12} />{a.filename}</a></li>)}</ul>}
+                <ol className="thread">
+                  {/* The original request opens the thread: the requester's own words, the form answers and the files. */}
+                  <li className="msg reply original" id="original-request">
+                    <Avatar name={t.requester.name} size={32} />
+                    <div className="msg-body">
+                      <div className="msg-head"><strong>{t.requester.name}</strong><span className="muted">Requester · {clock(t.createdAt)} · {new Date(t.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span><span className="msg-tag">Original request</span></div>
+                      <p className="msg-text description">{t.description}</p>
+                      {t.formData && Object.keys(t.formData).length > 0 && (
+                        <dl className="msg-facts">
+                          {Object.entries(t.formData).map(([k, v]) => <div key={k}><dt>{k.replace(/_/g, ' ')}</dt><dd>{typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v)}</dd></div>)}
+                        </dl>
+                      )}
+                      <AttachmentsInline t={t} user={user} act={act} busy={busy} />
+                    </div>
+                  </li>
+                  {replies.map((r) => (
+                    <li className="msg reply" key={r.id}>
+                      <Avatar name={r.author.name} size={32} />
+                      <div className="msg-body">
+                        <div className="msg-head"><strong>{r.author.name}</strong><span className="muted">{r.author.id === t.requesterId ? 'Requester' : labels[r.author.role]} · {clock(r.createdAt)} · {new Date(r.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{r.editedAt ? ' · edited' : ''}</span>
+                          {r.author.id === user.id && !closed && editing !== r.id && <button className="msg-edit" onClick={() => { setEditing(r.id); setEditText(r.body); }}>Edit</button>}
                         </div>
-                      </li>
-                    ))}
-                  </ol>
-                ) : <p className="thread-empty">No replies yet. {closed ? 'This ticket is finished.' : 'Start the conversation below.'}</p>}
+                        {editing === r.id ? (
+                          <form className="composer-form" onSubmit={(e) => { e.preventDefault(); void act(async () => { await api(`/tickets/${id}/replies/${r.id}`, 'PATCH', { body: editText }); setEditing(null); }, 'Reply updated.'); }}>
+                            <textarea aria-label="Edit reply" value={editText} onChange={(e) => setEditText(e.target.value)} rows={3} maxLength={10000} required />
+                            <div className="composer-actions"><button type="button" className="text-btn" onClick={() => setEditing(null)}>Cancel</button><span className="grow" /><button className="primary" disabled={busy}>Save</button></div>
+                          </form>
+                        ) : <div className="msg-text"><MentionText body={r.body} mentions={r.mentions} /></div>}
+                        {r.attachments && r.attachments.length > 0 && <ul className="msg-files">{r.attachments.map((a: Attachment) => <li key={a.id}><a href={`/api/tickets/${t.id}/attachments/${a.id}`} download={a.filename}><Icon name="paperclip" size={12} />{a.filename}</a></li>)}</ul>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                {!replies.length && <p className="thread-empty">No replies yet. {closed ? 'This ticket is finished.' : 'Start the conversation below.'}</p>}
               </section>
 
               {staff && <InternalNotes ticketId={id} refresh={refresh} />}
@@ -158,7 +157,7 @@ export function TicketWorkspace({ id, user, refresh, busy, act, route }: { id: s
                 <section className={`composer ${composer}`} aria-label="Composer">
                   {staff && (
                     <div className="composer-tabs" role="tablist" aria-label="Composer mode">
-                      <button role="tab" aria-selected={composer === 'reply'} className={composer === 'reply' ? 'active' : ''} onClick={() => setComposer('reply')}><Icon name="message" size={14} />Reply</button>
+                      <button role="tab" aria-selected={composer === 'reply'} className={composer === 'reply' ? 'active' : ''} onClick={() => setComposer('reply')}><Icon name="message" size={14} />Public reply</button>
                       <button role="tab" aria-selected={composer === 'note'} className={composer === 'note' ? 'active' : ''} onClick={() => setComposer('note')}><Icon name="lock" size={14} />Internal note</button>
                     </div>
                   )}
@@ -184,25 +183,29 @@ export function TicketWorkspace({ id, user, refresh, busy, act, route }: { id: s
                 </section>
               )}
             </>
-          ) : (
+          )}
+          {tab === 'activity' && (
             <>
               <ActivityFeed ticketId={id} refresh={refresh} />
               {staff && <EventsTimeline ticketId={id} refresh={refresh} />}
             </>
           )}
+          {tab === 'approvals' && <section className="activity-section"><ApprovalsPanel ticket={t} user={user} act={act} busy={busy} /></section>}
+          {tab === 'related' && staff && <RelatedWork t={t} />}
         </main>
 
-        {/* ── INTELLIGENCE ────────────────────────────────────────────── */}
-        <aside className="tw-intel" aria-label="Ticket intelligence">
+        {/* ── DETAILS: compact context, SLA, reviewed AI, people ───────── */}
+        <aside className="tw-intel" aria-label="Ticket details">
           <SlaPanel t={t} />
+          <ContextPanel t={t} user={user} act={act} busy={busy} categories={categories ?? []} engineers={engineers ?? []} />
           {staff && <div className="intel-ai"><p className="eyebrow intel-eyebrow"><Icon name="spark" size={12} />Ask OpsPilot · {ticketKey(t)}</p><AiTicketPanel ticket={t} user={user} act={act} refresh={refresh} onDraft={(text) => { setComposer('reply'); setReply(text); setTab('conversation'); setTimeout(() => document.getElementById('public-reply')?.focus(), 50); }} /></div>}
           <section className="intel-section" id="suggested-knowledge"><p className="eyebrow">Suggested knowledge</p><SuggestedArticles text={`${t.title} ${t.description}`} /><KnowledgeFallback title={t.title} description={t.description} /></section>
-          {staff && <RelatedWork t={t} />}
+          <RequesterPanel t={t} staff={staff} />
           <Watchers ticket={t} user={user} act={act} busy={busy} />
-          <ApprovalsPanel ticket={t} user={user} act={act} busy={busy} />
+          {approvalsCount === 0 && <ApprovalsPanel ticket={t} user={user} act={act} busy={busy} />}
         </aside>
       </div>
-      {(contextOpen || intelOpen) && <div className="tw-scrim" onClick={() => { setContextOpen(false); setIntelOpen(false); }} aria-hidden="true" />}
+      {intelOpen && <div className="tw-scrim" onClick={() => setIntelOpen(false)} aria-hidden="true" />}
 
       {resolving && <ResolveDialog t={t} busy={busy} onClose={() => setResolving(false)} onResolve={(summary) => {
         setResolving(false);
@@ -216,19 +219,22 @@ export function TicketWorkspace({ id, user, refresh, busy, act, route }: { id: s
   );
 }
 
-/* ── Context panel (left) ─────────────────────────────────────────────── */
+/* ── Context panel (details pane) ────────────────────────────────────── */
 /**
- * Ticket properties. The form is re-seeded when the ticket's own properties change on the server,
- * not on every version bump: a colleague's reply also increments the version, and remounting on
- * that silently threw away whatever the engineer had just selected. The save still carries
- * `t.version`, so a genuine concurrent edit is still rejected rather than overwritten.
+ * Ticket properties, compact. The three routine fields — status, assignee, priority — are always
+ * editable in place; category, linked asset, classification and dates live under "More properties"
+ * so the conversation keeps the room. The form is re-seeded when the ticket's own properties change
+ * on the server, not on every version bump: a colleague's reply also increments the version, and
+ * remounting on that silently threw away whatever the engineer had just selected. The save still
+ * carries `t.version`, so a genuine concurrent edit is still rejected rather than overwritten.
  */
 function ContextPanel({ t, user, act, busy, categories, engineers }: { t: Ticket; user: CurrentUser; act: Act; busy: boolean; categories: Category[]; engineers: Person[] }) {
   const staff = user.role !== 'EMPLOYEE';
   const due = t.dueAt ? new Date(t.dueAt) : null;
+  const [more, setMore] = useState(false);
   return (
-    <section className="ctx" aria-labelledby="ctx-h">
-      <p className="eyebrow" id="ctx-h">Properties</p>
+    <section className="ctx intel-section" aria-labelledby="ctx-h">
+      <div className="section-title"><h2 id="ctx-h">Properties</h2>{staff && <button type="button" className="text-btn btn-sm" aria-expanded={more} aria-controls="ctx-more" onClick={() => setMore(!more)}>{more ? 'Fewer' : 'More'}<Icon name="chevronDown" size={14} className={more ? 'flip' : ''} /></button>}</div>
       {staff ? (
         <form className="ctx-form" key={`${t.id}-${t.status}-${t.assigneeId ?? ''}-${t.priority}-${t.categoryId}-${t.assetId ?? ''}`} onSubmit={(e) => {
           e.preventDefault();
@@ -238,9 +244,16 @@ function ContextPanel({ t, user, act, busy, categories, engineers }: { t: Ticket
           <label>Status<select aria-label="Status" name="status" defaultValue={t.status}>{[t.status, ...transitions[t.status]].map((s) => <option key={s} value={s}>{labels[s]}</option>)}</select></label>
           <label>Assignee<select aria-label="Assignee" name="assigneeId" defaultValue={t.assigneeId ?? ''}><option value="">Unassigned</option>{engineers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
           <label>Priority<select aria-label="Priority" name="priority" defaultValue={t.priority}>{priorities.map((p) => <option key={p} value={p}>{PRIORITY_CODE[p]} {PRIORITY_WORD[p]}</option>)}</select></label>
-          <label>Category<select aria-label="Category" name="categoryId" defaultValue={t.categoryId}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-          <AssetPicker current={t.asset} />
+          <div id="ctx-more" className={`ctx-more ${more ? 'open' : ''}`}>
+            <label>Category<select aria-label="Category" name="categoryId" defaultValue={t.categoryId}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+            <AssetPicker current={t.asset} />
+          </div>
           <button className="primary" disabled={busy}>Save changes</button>
+          {!more && <dl className="ctx-list ctx-summary">
+            <div><dt>Category</dt><dd>{t.category.name}</dd></div>
+            {t.asset && <div><dt>Linked asset</dt><dd><a href={`#/assets/${t.asset.id}`}>Linked asset: {t.asset.tag}</a></dd></div>}
+            <div><dt>Type</dt><dd>{labels[t.type]}</dd></div>
+          </dl>}
         </form>
       ) : (
         <dl className="ctx-list">
@@ -252,9 +265,9 @@ function ContextPanel({ t, user, act, busy, categories, engineers }: { t: Ticket
           {t.asset && <div><dt>Asset</dt><dd><a href={`#/assets/${t.asset.id}`}>{t.asset.tag}</a></dd></div>}
         </dl>
       )}
-      <div className="ctx-class"><TicketClassification ticket={t} act={act} busy={busy} editable={staff} /></div>
+      {(more || !staff) && <div className="ctx-class"><TicketClassification ticket={t} act={act} busy={busy} editable={staff} /></div>}
+      {more && t.asset && <dl className="ctx-list ctx-meta"><div><dt>Linked asset</dt><dd><a href={`#/assets/${t.asset.id}`}>Linked asset: {t.asset.tag}</a></dd></div></dl>}
       <dl className="ctx-list ctx-meta">
-        {t.asset && <div><dt>Linked asset</dt><dd><a href={`#/assets/${t.asset.id}`}>Linked asset: {t.asset.tag}</a></dd></div>}
         {due && <div><dt>Due</dt><dd className={due.getTime() < Date.now() && !['RESOLVED', 'CLOSED'].includes(t.status) ? 'crit-text' : ''}>{when(t.dueAt)}</dd></div>}
         <div><dt>Created</dt><dd>{when(t.createdAt)}</dd></div>
         <div><dt>Updated</dt><dd>{when(t.updatedAt)}</dd></div>
@@ -268,7 +281,7 @@ function RequesterPanel({ t, staff }: { t: Ticket; staff: boolean }) {
   const p = t.requesterProfile;
   if (!p) return null;
   return (
-    <section className="ctx requester" aria-labelledby="req-h">
+    <section className="ctx intel-section requester" aria-labelledby="req-h">
       <p className="eyebrow" id="req-h">Requester</p>
       <a className="req-card" href={`#/people/${p.id}`}>
         <Avatar name={p.name} size={36} />
@@ -381,9 +394,8 @@ function WorkspaceSkeleton() {
     <div className="tw" aria-busy="true" aria-label="Loading ticket">
       <div className="skeleton-surface" style={{ height: 88, marginBottom: 'var(--s4)' }} />
       <div className="tw-grid">
-        <div className="skeleton-surface" style={{ height: 420 }} />
-        <div><div className="skeleton-surface" style={{ height: 160, marginBottom: 'var(--s4)' }} /><div className="skeleton-surface" style={{ height: 320 }} /></div>
-        <div className="skeleton-surface" style={{ height: 380 }} />
+        <div><div className="skeleton-surface" style={{ height: 44, marginBottom: 'var(--s3)' }} /><div className="skeleton-surface" style={{ height: 420 }} /></div>
+        <div><div className="skeleton-surface" style={{ height: 200, marginBottom: 'var(--s3)' }} /><div className="skeleton-surface" style={{ height: 320 }} /></div>
       </div>
     </div>
   );

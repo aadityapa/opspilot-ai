@@ -32,6 +32,8 @@ test('temporary account → forced password change → MFA enrolment → code at
   await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening)/ })).toBeVisible();
   await page.getByRole('link', { name: 'Administration', exact: true }).click();
   await page.getByRole('navigation', { name: 'Administration sections' }).getByRole('link', { name: 'Accounts & access', exact: true }).click();
+  // Creation is a deliberate step in its own pane.
+  await page.getByRole('button', { name: 'Add account' }).click();
   await page.getByLabel('Full name').fill(`Security Person ${stamp}`);
   await page.getByLabel('Email', { exact: true }).fill(email);
   await page.getByLabel('Temporary password').fill(tempPassword);
@@ -136,6 +138,8 @@ test('five wrong passwords lock the account and an administrator can unlock it',
   await signIn(page, 'admin@opspilot.example', process.env.DEMO_PASSWORD!);
   await page.getByRole('link', { name: 'Administration', exact: true }).click();
   await page.getByRole('navigation', { name: 'Administration sections' }).getByRole('link', { name: 'Accounts & access', exact: true }).click();
+  // Creation is a deliberate step in its own pane.
+  await page.getByRole('button', { name: 'Add account' }).click();
   await page.getByLabel('Full name').fill(`Lock Person ${stamp}`);
   await page.getByLabel('Email', { exact: true }).fill(victim);
   await page.getByLabel('Temporary password').fill(tempPassword);

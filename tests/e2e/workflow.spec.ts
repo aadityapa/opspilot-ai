@@ -54,9 +54,9 @@ test('employee → engineer → resolution → metrics, with URL authorization',
   await expect(page.getByRole('heading', { name: 'Operations Command Center' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Ticket flow' })).toBeVisible();
   // The ticket just resolved is counted: MTTR is a figure, not the "nothing resolved" placeholder.
-  const pulse = page.getByRole('region', { name: 'Service operations pulse' });
-  await expect(pulse.getByText('MTTR', { exact: true })).toBeVisible();
-  await expect(pulse.getByText('Nothing resolved in this window')).toHaveCount(0);
+  const facts = page.locator('.facts-strip');
+  await expect(facts.getByText('MTTR', { exact: true })).toBeVisible();
+  await expect(facts.getByText('nothing resolved in window')).toHaveCount(0);
   if (process.env.CAPTURE_SCREENSHOTS === 'true')
     await page.screenshot({ path: 'docs/screenshots/dashboard.png', fullPage: true });
   await logout(page);
@@ -74,6 +74,8 @@ test('administrator creates and disables a user', async ({ page }) => {
   await page.getByRole('link', { name: 'Administration', exact: true }).click();
   await page.getByRole('navigation', { name: 'Administration sections' }).getByRole('link', { name: 'Accounts & access', exact: true }).click();
   const name = `Synthetic User ${Date.now()}`;
+  // Creation is a deliberate step in its own pane.
+  await page.getByRole('button', { name: 'Add account' }).click();
   await page.getByLabel('Full name').fill(name);
   await page.getByLabel('Email', { exact: true }).fill(`synthetic-${Date.now()}@example.test`);
   // The policy refuses a password containing the person's own name, so this one must not.

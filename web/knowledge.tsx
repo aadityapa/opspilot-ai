@@ -3,8 +3,9 @@ import { api } from './api';
 import { useRecord, type Act } from './operations';
 import { articleStatuses, articleVisibilities, labels, type Article, type ArticleFeedback, type ArticleSummary, type CatalogItem, type CurrentUser, type KnowledgeOverview, type Page, type Ticket } from '../shared/model';
 import { Icon } from './ui/icons';
-import { EmptyState, ErrorState, Skeleton, fmtDay, toast } from './ui';
-import { icon as catalogIcon } from './catalog';
+import { EmptyState, ErrorState, Skeleton, StatePage, fmtDay, toast } from './ui';
+import { icon as catalogIcon, tileHue } from './catalog';
+import { KnowledgeArt } from './ui/art';
 
 type Category = { id: string; name: string };
 const visibilityLabel: Record<string, string> = { EMPLOYEE: 'Everyone', SUPPORT: 'Support team only' };
@@ -19,8 +20,14 @@ const statusLabel: Record<string, string> = { DRAFT: 'Draft', PUBLISHED: 'Publis
 export function KnowledgePage({ route, user, act, busy, refresh }: { route: string; user: CurrentUser; act: Act; busy: boolean; refresh: number }) {
   const [path, query] = route.split('?');
   const id = path.split('/')[2];
+  // Only administrators author articles. Anyone else who lands here gets a real forbidden state —
+  // not an article lookup for an id called "new", and not a generic loading error.
   if (id === 'new')
-    return user.role === 'ADMIN' ? <ArticleForm act={act} busy={busy} /> : <ErrorState error="Administrator role required" back={{ href: '#/knowledge', label: 'Knowledge' }} />;
+    return user.role === 'ADMIN' ? <ArticleForm act={act} busy={busy} /> : (
+      <StatePage code="403" title="Only administrators write knowledge articles." role="alert" actions={<><a className="primary" href="#/knowledge">Back to Knowledge</a>{user.role !== 'EMPLOYEE' && <a className="btn" href="#/tickets">Open Service Desk</a>}</>}>
+        You can read every article your role allows and rate them; authoring, editing and archiving are administrator capabilities.
+      </StatePage>
+    );
   return id
     ? <ArticleView id={id} user={user} act={act} busy={busy} refresh={refresh} />
     : <KnowledgeHome user={user} refresh={refresh} query={query ?? ''} />;
@@ -115,7 +122,7 @@ function KnowledgeHome({ user, refresh, query }: { user: CurrentUser; refresh: n
                 {overview.categories.map((c) => (
                   <li key={c.id}>
                     <a href={`#/knowledge?category=${c.id}`}>
-                      <span className="hr-icon" aria-hidden="true"><Icon name={categoryIcon(c.name)} size={18} /></span>
+                      <span className={`gloss-tile ${tileHue(c.name)}`} aria-hidden="true"><Icon name={categoryIcon(c.name)} size={20} /></span>
                       <span className="kb-cat-body"><strong>{c.name}</strong><small>{c.articles} article{c.articles === 1 ? '' : 's'}</small></span>
                       <Icon name="chevron" size={16} />
                     </a>
@@ -127,7 +134,10 @@ function KnowledgeHome({ user, refresh, query }: { user: CurrentUser; refresh: n
           {recommended.length > 0 && (
             <section className="kb-block kb-featured">
               <div className="section-title"><h2>Recommended for you</h2><span className="muted t-caption">{recommendedBecause ? `Because you have an open ${recommendedBecause.category?.name} ticket` : 'From your open work'}</span></div>
-              <ul className="kb-hits">{recommended.map((a) => <ResultRow key={a.id} a={a} />)}</ul>
+              <div className="kb-featured-card">
+                <ul className="kb-hits">{recommended.map((a) => <ResultRow key={a.id} a={a} />)}</ul>
+                <div className="kb-featured-art" aria-hidden="true"><KnowledgeArt width={280} /></div>
+              </div>
             </section>
           )}
           <div className="kb-two">

@@ -3,7 +3,7 @@ import { api } from './api';
 import { labels, priorities, type CurrentUser, type Department, type OperationsSummary } from '../shared/model';
 import { Icon } from './ui/icons';
 import { Avatar, EmptyState, ticketKey } from './ui';
-import { AreaChart, SegmentBar } from './ui/charts';
+import { AreaChart, SegmentBar, Sparkline } from './ui/charts';
 
 /**
  * Operations Command Center.
@@ -106,26 +106,30 @@ export function OverviewPage({ user, refresh, route }: { user: CurrentUser; refr
       {!s ? <DashboardSkeleton /> : (
         <>
           {error && <div className="alert warning" role="status">The last refresh failed ({error}); showing figures from {loadedAt?.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}. <button className="btn-sm" onClick={() => setTick((t) => t + 1)}>Retry</button></div>}
-          <Pulse s={s} days={days} />
-          <div className="cc-row health-row">
-            <GlobalHealth s={s} />
-            <ServicePressure s={s} />
+          {/* 1 · Four primary measures, then every secondary measure on one quiet line. */}
+          <KpiRow s={s} days={days} />
+          <FactsStrip s={s} />
+          {/* 2 · Flow beside the people carrying it. */}
+          <div className="cc-row flow-row">
+            <TicketFlow s={s} days={days} setDays={(d) => set({ days: d === 7 ? '' : String(d) })} />
+            <div className="cc-col"><TeamCapacity s={s} /><DepartmentDemand s={s} /></div>
           </div>
-          <Attention s={s} user={user} />
-          <div className="cc-grid">
-            <div className="cc-col">
-              <TicketFlow s={s} days={days} setDays={(d) => set({ days: d === 7 ? '' : String(d) })} />
-              <CriticalWork s={s} />
-              <TeamLoad s={s} />
-              <LiveOperations s={s} />
-            </div>
-            <div className="cc-col">
-              <SlaPerformance s={s} />
-              <PriorityMix s={s} />
-              <WorkType s={s} />
-              <AssetSignals s={s} />
-              <AskStrip />
-            </div>
+          {/* 3 · The queue that needs a decision now. */}
+          <CriticalWork s={s} />
+          {/* 4 · Why, where, and how the targets are holding. */}
+          <div className="cc-row triple-row">
+            <Attention s={s} user={user} />
+            <ServicePressure s={s} />
+            <SlaPerformance s={s} />
+          </div>
+          <div className="cc-row triple-row">
+            <PriorityMix s={s} />
+            <WorkType s={s} />
+            <AssetSignals s={s} />
+          </div>
+          <div className="cc-row live-row">
+            <LiveOperations s={s} />
+            <AskStrip />
           </div>
         </>
       )}
@@ -137,83 +141,84 @@ export function OverviewPage({ user, refresh, route }: { user: CurrentUser; refr
 function DashboardSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading the command center">
-      <div className="pulse skeleton-surface" style={{ height: 96 }} />
-      <div className="cc-row health-row"><div className="skeleton-surface" style={{ height: 150 }} /><div className="skeleton-surface" style={{ height: 150 }} /></div>
-      <div className="skeleton-surface" style={{ height: 120, marginBottom: 'var(--s5)' }} />
-      <div className="cc-grid"><div className="cc-col"><div className="skeleton-surface" style={{ height: 320 }} /><div className="skeleton-surface" style={{ height: 260 }} /></div><div className="cc-col"><div className="skeleton-surface" style={{ height: 260 }} /><div className="skeleton-surface" style={{ height: 180 }} /></div></div>
+      <div className="kpi-row">{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton-surface" style={{ height: 112 }} />)}</div>
+      <div className="skeleton-surface" style={{ height: 44, marginBottom: 'var(--s4)' }} />
+      <div className="cc-row flow-row"><div className="skeleton-surface" style={{ height: 320 }} /><div className="skeleton-surface" style={{ height: 320 }} /></div>
+      <div className="skeleton-surface" style={{ height: 260, marginBottom: 'var(--s4)' }} />
+      <div className="cc-row triple-row"><div className="skeleton-surface" style={{ height: 220 }} /><div className="skeleton-surface" style={{ height: 220 }} /><div className="skeleton-surface" style={{ height: 220 }} /></div>
     </div>
   );
 }
 
-/* ── Service operations pulse ─────────────────────────────────────────── */
-function Pulse({ s, days }: { s: OperationsSummary; days: number }) {
-  const p1 = s.active.unassignedByPriority.URGENT ?? 0, p2 = s.active.unassignedByPriority.HIGH ?? 0;
-  const priorityUnowned = [p1 ? `${p1} P1` : '', p2 ? `${p2} P2` : ''].filter(Boolean).join(' · ');
+/* ── Primary measures ─────────────────────────────────────────────────── */
+/**
+ * Four cards carry the figures an operations lead looks at first; each one links to the place
+ * where the work behind it lives. Everything else the summary computes is still on the page,
+ * one row down, in the facts strip — nothing is dropped, only ranked.
+ */
+function KpiRow({ s, days }: { s: OperationsSummary; days: number }) {
+  const rangeWord = RANGES.find((r) => r.days === days)?.long.toLowerCase() ?? '';
+  const created = s.flow.perDay.map((d) => d.created);
+  const resolved = s.flow.perDay.map((d) => d.resolved);
   const compliance = s.sla.resolutionCompliancePercent;
+  const attention = s.sla.activeBreached + s.sla.atRisk;
   return (
-    <section className="pulse" aria-label="Service operations pulse">
-      <p className="eyebrow pulse-eyebrow">Service operations pulse</p>
-      <a className="pulse-cell" href="#/tickets">
-        <span className="pulse-label">Active</span>
-        <strong className="pulse-value">{s.active.total.toLocaleString()}</strong>
-        <Delta value={pctDelta(s.flow.created, s.flow.previousCreated)} goodWhen="down" hint={`${s.flow.created} new · ${RANGES.find((r) => r.days === days)?.long.toLowerCase() ?? ''}`} />
+    <section className="kpi-row" aria-label="Primary measures">
+      <a className="kpi-card" href="#/tickets">
+        <span className="tile-icon" aria-hidden="true"><Icon name="ticket" size={18} /></span>
+        <span className="kpi-body">
+          <span className="kpi-label">Active tickets</span>
+          <strong className="kpi-value">{s.active.total.toLocaleString()}</strong>
+          <Delta value={pctDelta(s.flow.created, s.flow.previousCreated)} goodWhen="down" hint={`${s.flow.created} new · ${rangeWord}`} />
+        </span>
+        {created.length > 1 && <span className="kpi-spark" aria-hidden="true"><Sparkline values={created} color="var(--chart-1)" width={88} height={30} /></span>}
       </a>
-      <a className={`pulse-cell ${s.active.unassigned ? 'warn' : ''}`} href="#/tickets?assigned=unassigned">
-        <span className="pulse-label">Unassigned</span>
-        <strong className="pulse-value">{s.active.unassigned}</strong>
-        <small className="pulse-sub">{priorityUnowned ? <><b className={p1 ? 'crit-text' : 'warn-text'}>{priorityUnowned}</b> · oldest {hm(s.active.oldestUnassignedAgeMs)}</> : s.active.unassigned ? `oldest ${hm(s.active.oldestUnassignedAgeMs)}` : 'Every ticket has an owner'}</small>
+      <a className={`kpi-card ${s.sla.activeBreached ? 'crit' : s.sla.atRisk ? 'warn' : 'ok'}`} href={s.sla.activeBreached ? '#/tickets' : '#/board'}>
+        <span className={`tile-icon ${s.sla.activeBreached ? 'danger' : s.sla.atRisk ? 'warning' : 'success'}`} aria-hidden="true"><Icon name="alert" size={18} /></span>
+        <span className="kpi-body">
+          <span className="kpi-label">SLA attention</span>
+          <strong className="kpi-value">{attention}</strong>
+          <small className="pulse-sub">{attention ? <>{s.sla.activeBreached ? <b className="crit-text">{s.sla.activeBreached} breached</b> : null}{s.sla.activeBreached && s.sla.atRisk ? ' · ' : ''}{s.sla.atRisk ? <b className="warn-text">{s.sla.atRisk} at risk</b> : null}{s.sla.atRiskUnder30Min ? ` · ${s.sla.atRiskUnder30Min} under 30 min` : ''}</> : 'Every active ticket is inside its targets'}</small>
+        </span>
       </a>
-      <a className={`pulse-cell ${s.sla.atRisk ? 'warn' : ''}`} href="#/board">
-        <span className="pulse-label">SLA at risk</span>
-        <strong className="pulse-value">{s.sla.atRisk}</strong>
-        <small className="pulse-sub">{s.sla.atRisk ? `${s.sla.atRiskUnder30Min} under 30 min` : 'No ticket near a deadline'}</small>
+      <a className="kpi-card" href="#/analytics">
+        <span className="tile-icon success" aria-hidden="true"><Icon name="shield" size={18} /></span>
+        <span className="kpi-body">
+          <span className="kpi-label">SLA compliance</span>
+          <strong className="kpi-value">{compliance === null ? '—' : `${compliance.toFixed(1)}%`}</strong>
+          <small className="pulse-sub">{compliance === null ? 'No resolved tickets measured yet' : `response ${s.sla.responseCompliancePercent === null ? '—' : `${s.sla.responseCompliancePercent.toFixed(1)}%`} · ${s.sla.resolutionMeasured} measured`}</small>
+        </span>
+        {resolved.length > 1 && <span className="kpi-spark" aria-hidden="true"><Sparkline values={resolved} color="var(--chart-3)" width={88} height={30} /></span>}
       </a>
-      <a className={`pulse-cell ${s.sla.activeBreached ? 'crit' : 'ok'}`} href="#/tickets">
-        <span className="pulse-label">SLA breached</span>
-        <strong className="pulse-value">{s.sla.activeBreached}</strong>
-        <small className="pulse-sub">{s.sla.activeBreached ? `oldest breach ${hm(s.sla.oldestBreachAgeMs)}` : 'All active work inside SLA'}</small>
-      </a>
-      <div className="pulse-cell">
-        <span className="pulse-label">MTTR</span>
-        <strong className="pulse-value">{mins(s.mttrMinutes)}</strong>
-        <Delta value={s.mttrMinutes !== null && s.previousMttrMinutes !== null ? Math.round(s.mttrMinutes - s.previousMttrMinutes) : null} unit="m" goodWhen="down" hint={s.mttrMinutes === null ? 'Nothing resolved in this window' : s.previousMttrMinutes === null ? 'No previous window to compare' : 'vs previous window'} />
-      </div>
-      <a className="pulse-cell" href="#/desk?view=analytics">
-        <span className="pulse-label">SLA compliance</span>
-        <strong className="pulse-value">{compliance === null ? '—' : `${compliance.toFixed(1)}%`}</strong>
-        <small className="pulse-sub">{compliance === null ? 'No resolved tickets measured yet' : `response ${s.sla.responseCompliancePercent === null ? '—' : `${s.sla.responseCompliancePercent.toFixed(1)}%`} · ${s.sla.resolutionMeasured} measured`}</small>
-      </a>
-      <a className="pulse-cell" href="#/reports">
-        <span className="pulse-label">CSAT</span>
-        <strong className="pulse-value">{s.csat.average === null ? '—' : <>{s.csat.average.toFixed(2)}<span className="pulse-unit"> / 5</span></>}</strong>
-        <Delta value={s.csat.average !== null && s.csat.previousAverage !== null ? Math.round((s.csat.average - s.csat.previousAverage) * 100) / 100 : null} unit="" goodWhen="up" hint={s.csat.responses ? `${s.csat.responses} response${s.csat.responses === 1 ? '' : 's'}` : 'No ratings in this window'} />
+      <a className="kpi-card" href="#/reports/csat?days=30">
+        <span className="tile-icon violet" aria-hidden="true"><Icon name="star" size={18} /></span>
+        <span className="kpi-body">
+          <span className="kpi-label">CSAT score</span>
+          <strong className="kpi-value">{s.csat.average === null ? '—' : <>{s.csat.average.toFixed(2)}<span className="pulse-unit"> / 5</span></>}</strong>
+          <Delta value={s.csat.average !== null && s.csat.previousAverage !== null ? Math.round((s.csat.average - s.csat.previousAverage) * 100) / 100 : null} unit="" goodWhen="up" hint={s.csat.responses ? `${s.csat.responses} response${s.csat.responses === 1 ? '' : 's'}` : 'No ratings in this window'} />
+        </span>
       </a>
     </section>
   );
 }
 
-/* ── Global operational health ─────────────────────────────────────────── */
-function GlobalHealth({ s }: { s: OperationsSummary }) {
+/** The secondary measures the old seven-card pulse and health strip carried, on one line, still linked. */
+function FactsStrip({ s }: { s: OperationsSummary }) {
+  const p1 = s.active.unassignedByPriority.URGENT ?? 0, p2 = s.active.unassignedByPriority.HIGH ?? 0;
+  const owned = s.active.total ? Math.round(((s.active.total - s.active.unassigned) / s.active.total) * 100) : 0;
   const breached = s.sla.activeBreached, atRisk = s.sla.atRisk;
   const healthy = Math.max(0, s.active.total - breached - atRisk);
-  const pct = s.active.total ? Math.round((healthy / s.active.total) * 1000) / 10 : null;
+  const healthPct = s.active.total ? Math.round((healthy / s.active.total) * 1000) / 10 : null;
   return (
-    <section className="health" aria-labelledby="health-h">
-      <div className="health-main">
-        <p className="eyebrow" id="health-h">Global operational health</p>
-        <div className="health-figure">
-          <strong className={pct === null ? '' : pct >= 95 ? 'ok' : pct >= 85 ? 'warn' : 'crit'}>{pct === null ? '—' : `${pct}%`}</strong>
-          <span>of active work is inside its service targets<small>Derived from the SLA position of every active ticket · {s.active.total} active</small></span>
-        </div>
-        <SegmentBar ariaLabel="Operational health of active tickets" height={14} segments={[{ label: 'Healthy', value: healthy, color: 'var(--success)' }, { label: 'At risk', value: atRisk, color: 'var(--warning)' }, { label: 'Breached', value: breached, color: 'var(--danger)' }]} />
-        <dl className="health-facts">
-          <div><dt>Owned</dt><dd className={s.active.total && s.active.unassigned / s.active.total > 0.25 ? 'warn-text' : ''}>{s.active.total ? Math.round(((s.active.total - s.active.unassigned) / s.active.total) * 100) : 0}%<small>{s.active.total - s.active.unassigned} of {s.active.total} have an owner</small></dd></div>
-          <div><dt>In progress</dt><dd>{s.active.byStatus.IN_PROGRESS ?? 0}<small>{s.active.byStatus.OPEN ?? 0} open · {s.active.byStatus.WAITING_FOR_USER ?? 0} pending user</small></dd></div>
-          <div><dt>Oldest unowned</dt><dd className={s.active.oldestUnassignedAgeMs && s.active.oldestUnassignedAgeMs > 4 * 3600000 ? 'warn-text' : ''}>{hm(s.active.oldestUnassignedAgeMs)}<small>{s.active.unassigned ? 'waiting for an owner' : 'nothing unowned'}</small></dd></div>
-          <div><dt>Net backlog</dt><dd className={s.flow.backlogChange > 0 ? 'crit-text' : s.flow.backlogChange < 0 ? 'ok-text' : ''}>{s.flow.backlogChange > 0 ? '+' : ''}{s.flow.backlogChange}<small>created minus resolved in window</small></dd></div>
-        </dl>
-      </div>
-    </section>
+    <dl className="facts-strip" aria-label="Secondary measures">
+      <div className={s.active.unassigned ? 'warn' : ''}><dt>Unassigned</dt><dd><a href="#/tickets?assigned=unassigned">{s.active.unassigned}</a><small>{p1 || p2 ? `${p1 ? `${p1} P1` : ''}${p1 && p2 ? ' · ' : ''}${p2 ? `${p2} P2` : ''} · oldest ${hm(s.active.oldestUnassignedAgeMs)}` : s.active.unassigned ? `oldest ${hm(s.active.oldestUnassignedAgeMs)}` : 'every ticket has an owner'}</small></dd></div>
+      <div><dt>Owned</dt><dd>{owned}%<small>{s.active.total - s.active.unassigned} of {s.active.total}</small></dd></div>
+      <div><dt>In progress</dt><dd>{s.active.byStatus.IN_PROGRESS ?? 0}<small>{s.active.byStatus.OPEN ?? 0} open · {s.active.byStatus.WAITING_FOR_USER ?? 0} pending user</small></dd></div>
+      <div><dt>MTTR</dt><dd>{mins(s.mttrMinutes)}<small>{s.mttrMinutes === null ? 'nothing resolved in window' : s.previousMttrMinutes === null ? 'no previous window' : `${s.mttrMinutes - s.previousMttrMinutes > 0 ? '+' : ''}${Math.round(s.mttrMinutes - s.previousMttrMinutes)}m vs previous`}</small></dd></div>
+      <div className={s.flow.backlogChange > 0 ? 'crit' : s.flow.backlogChange < 0 ? 'ok' : ''}><dt>Net backlog</dt><dd>{s.flow.backlogChange > 0 ? '+' : ''}{s.flow.backlogChange}<small>created minus resolved</small></dd></div>
+      <div className={healthPct === null ? '' : healthPct >= 95 ? 'ok' : healthPct >= 85 ? 'warn' : 'crit'}><dt>Inside targets</dt><dd>{healthPct === null ? '—' : `${healthPct}%`}<small>{healthy} of {s.active.total} active · SLA-derived</small></dd></div>
+      {s.approvals.pending > 0 && <div><dt>Approvals</dt><dd><a href="#/approvals">{s.approvals.pending}</a><small>oldest waiting {hm(s.approvals.oldestPendingAgeMs)}</small></dd></div>}
+    </dl>
   );
 }
 
@@ -264,11 +269,11 @@ function Attention({ s, user }: { s: OperationsSummary; user: CurrentUser }) {
   if (s.csat.responses >= 3 && s.csat.average !== null && s.csat.average < 3.5) items.push({ rank: 7, level: 'CSAT', tone: 'warning', icon: 'star', title: `Satisfaction is ${s.csat.average.toFixed(2)} / 5 in this window`, detail: `${s.csat.responses} responses`, href: '#/reports', action: 'Open reports' });
   items.sort((a, b) => a.rank - b.rank);
   return (
-    <section className="attention" aria-labelledby="attention-h">
-      <div className="section-title"><h2 id="attention-h">Needs your attention</h2><span className="muted t-caption">{items.length ? `${items.length} item${items.length === 1 ? '' : 's'} · sorted by operational severity` : 'Derived from live queue figures'}</span></div>
+    <section className="region attention" aria-labelledby="attention-h">
+      <div className="section-title"><h2 id="attention-h">Needs your attention</h2><span className="muted t-caption">{items.length ? `${items.length} · by severity` : 'Derived from live queue figures'}</span></div>
       {items.length ? (
         <ol className="attention-feed">
-          {items.map((e) => (
+          {items.slice(0, 5).map((e) => (
             <li key={e.title} className={e.tone}>
               <span className="att-level"><Icon name={e.icon} size={14} />{e.level}</span>
               <span className="att-body"><strong>{e.title}</strong><small>{e.detail}</small></span>
@@ -326,6 +331,7 @@ function SlaPerformance({ s }: { s: OperationsSummary }) {
         <strong className={overall === null ? '' : overall >= 95 ? 'ok-text' : overall >= 85 ? 'warn-text' : 'crit-text'}>{overall === null ? '—' : `${overall.toFixed(1)}%`}</strong>
         <span>Overall<small>{s.sla.tracked} tickets carry an SLA · unfinished work is never counted as met</small></span>
       </div>
+      <SegmentBar ariaLabel="Operational health of active tickets" height={10} segments={[{ label: 'Healthy', value: Math.max(0, s.active.total - s.sla.activeBreached - s.sla.atRisk), color: 'var(--success)' }, { label: 'At risk', value: s.sla.atRisk, color: 'var(--warning)' }, { label: 'Breached', value: s.sla.activeBreached, color: 'var(--danger)' }]} />
       {bar('Response SLA', s.sla.responseCompliancePercent, s.sla.responseMeasured, s.sla.responseBreached)}
       {bar('Resolution SLA', s.sla.resolutionCompliancePercent, s.sla.resolutionMeasured, s.sla.resolutionBreached)}
       <div className="sla-now">
@@ -373,7 +379,7 @@ const breachAge = (t: OperationsSummary['critical'][number], asOf: string) => {
 function CriticalWork({ s }: { s: OperationsSummary }) {
   return (
     <section className="region table-region" aria-labelledby="crit-h">
-      <div className="section-title"><div><h2 id="crit-h">Critical &amp; at-risk work</h2><p className="muted t-sm">P1 and P2 incidents plus anything at risk or past its deadline, most urgent first</p></div><a href="#/tickets?priority=URGENT">All P1 →</a></div>
+      <div className="section-title"><div><h2 id="crit-h">Urgent attention</h2><p className="muted t-sm">P1 and P2 incidents plus anything at risk or past its deadline, most urgent first</p></div><a href="#/tickets?sla=at-risk">View all →</a></div>
       {s.critical.length ? (
         <div className="table-scroll">
           <table className="ops-table">
@@ -403,45 +409,45 @@ function CriticalWork({ s }: { s: OperationsSummary }) {
   );
 }
 
-/* ── Team and department load ─────────────────────────────────────────── */
-function TeamLoad({ s }: { s: OperationsSummary }) {
+/* ── Team capacity and department demand ─────────────────────────────── */
+function TeamCapacity({ s }: { s: OperationsSummary }) {
   const maxEng = Math.max(1, ...s.engineers.map((e) => e.active));
-  const maxDept = Math.max(1, ...s.departments.map((d) => d.active));
+  const online = s.engineers.filter((e) => e.active > 0).length;
   return (
     <section className="region" aria-labelledby="load-h">
-      <div className="section-title"><div><h2 id="load-h">Team capacity &amp; demand</h2><p className="muted t-sm">Active workload per engineer and demand by department · capacity targets are not recorded, so no percentage is shown</p></div></div>
-      <div className="load-grid">
-        <div>
-          <p className="eyebrow">Engineers</p>
-          {s.engineers.length ? (
-            <ul className="load-list">
-              {s.engineers.slice(0, 6).map((e) => (
-                <li key={e.id}>
-                  <span className="load-name"><Avatar name={e.name} size={22} />{e.name}</span>
-                  <span className="load-track"><i style={{ width: `${(e.active / maxEng) * 100}%` }} />{e.atRisk + e.breached > 0 && <b style={{ width: `${((e.atRisk + e.breached) / maxEng) * 100}%` }} />}</span>
-                  <span className="load-nums"><strong>{e.active}</strong> active{e.atRisk ? <em className="warn-text"> · {e.atRisk} at risk</em> : null}{e.breached ? <em className="crit-text"> · {e.breached} breached</em> : null}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="muted t-sm">No active tickets are assigned.</p>}
-          {s.active.unassigned > 0 && <p className="load-foot"><a href="#/tickets?assigned=unassigned">{s.active.unassigned} unowned</a> not shown above</p>}
-        </div>
-        <div>
-          <p className="eyebrow">Departments</p>
-          {s.departments.length ? (
-            <ul className="load-list">
-              {s.departments.slice(0, 6).map((d) => (
-                <li key={d.id}>
-                  <span className="load-name"><a href={`#/departments/${d.id}`}>{d.name}</a></span>
-                  <span className="load-track"><i style={{ width: `${(d.active / maxDept) * 100}%`, background: 'var(--violet)' }} />{d.atRisk + d.breached > 0 && <b style={{ width: `${((d.atRisk + d.breached) / maxDept) * 100}%` }} />}</span>
-                  <span className="load-nums"><strong>{d.active}</strong> active · {d.created} new{d.atRisk ? <em className="warn-text"> · {d.atRisk} at risk</em> : null}{d.breached ? <em className="crit-text"> · {d.breached} breached</em> : null}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="muted t-sm">No department has active tickets.</p>}
-          {s.unplaced.active > 0 && <p className="load-foot">{s.unplaced.active} active ticket{s.unplaced.active === 1 ? '' : 's'} from people without a department</p>}
-        </div>
-      </div>
+      <div className="section-title"><div><h2 id="load-h">Team capacity</h2><p className="muted t-sm">Active workload per engineer · capacity targets are not recorded, so bars are relative</p></div><span className="muted t-caption">{online} of {s.engineers.length} carrying work</span></div>
+      {s.engineers.length ? (
+        <ul className="load-list">
+          {s.engineers.slice(0, 6).map((e) => (
+            <li key={e.id}>
+              <span className="load-name"><Avatar name={e.name} size={22} />{e.name}</span>
+              <span className="load-track"><i style={{ width: `${(e.active / maxEng) * 100}%` }} />{e.atRisk + e.breached > 0 && <b style={{ width: `${((e.atRisk + e.breached) / maxEng) * 100}%` }} />}</span>
+              <span className="load-nums"><strong>{e.active}</strong> active{e.atRisk ? <em className="warn-text"> · {e.atRisk} at risk</em> : null}{e.breached ? <em className="crit-text"> · {e.breached} breached</em> : null}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="muted t-sm">No active tickets are assigned.</p>}
+      {s.active.unassigned > 0 && <p className="load-foot"><a href="#/tickets?assigned=unassigned">{s.active.unassigned} unowned</a> not shown above</p>}
+    </section>
+  );
+}
+function DepartmentDemand({ s }: { s: OperationsSummary }) {
+  const maxDept = Math.max(1, ...s.departments.map((d) => d.active));
+  return (
+    <section className="region" aria-labelledby="dept-h">
+      <div className="section-title"><h2 id="dept-h">Department demand</h2><a href="#/reports/departments?days=30">Report →</a></div>
+      {s.departments.length ? (
+        <ul className="load-list">
+          {s.departments.slice(0, 6).map((d) => (
+            <li key={d.id}>
+              <span className="load-name"><a href={`#/departments/${d.id}`}>{d.name}</a></span>
+              <span className="load-track"><i style={{ width: `${(d.active / maxDept) * 100}%`, background: 'var(--violet)' }} />{d.atRisk + d.breached > 0 && <b style={{ width: `${((d.atRisk + d.breached) / maxDept) * 100}%` }} />}</span>
+              <span className="load-nums"><strong>{d.active}</strong> active · {d.created} new{d.atRisk ? <em className="warn-text"> · {d.atRisk} at risk</em> : null}{d.breached ? <em className="crit-text"> · {d.breached} breached</em> : null}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="muted t-sm">No department has active tickets.</p>}
+      {s.unplaced.active > 0 && <p className="load-foot">{s.unplaced.active} active ticket{s.unplaced.active === 1 ? '' : 's'} from people without a department</p>}
     </section>
   );
 }

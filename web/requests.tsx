@@ -34,26 +34,73 @@ export function RequestRow({ t, href }: { t: Ticket; href: string }) {
 }
 
 export function MyRequestsPage({ user, route, refresh }: { user: CurrentUser; route: string; refresh: number }) {
-  const tab = new URLSearchParams(route.split('?')[1] ?? '').get('tab') ?? 'open';
+  const q = new URLSearchParams(route.split('?')[1] ?? '');
+  const tab = q.get('tab') ?? 'open';
+  const sel = q.get('sel') ?? '';
   const [page, setPage] = useState(1);
   const staff = user.role !== 'EMPLOYEE';
   const scope = staff ? `requesterId=${user.id}&` : '';
   const filter = tab === 'waiting' ? 'status=WAITING_FOR_USER' : tab === 'done' ? 'status=RESOLVED' : tab === 'all' ? '' : 'open=true';
   const { data, error } = useRecord<{ items: Ticket[]; total: number; pageSize: number }>(`/tickets?${scope}${filter}${filter ? '&' : ''}sort=updated&page=${page}&pageSize=20`, refresh);
+  const items = data?.items ?? [];
+  const selected = items.find((t) => t.id === sel) ?? items[0];
+  const tabHref = (k: string) => `#/requests${k === 'open' ? '' : `?tab=${k}`}`;
+  const selHref = (t: Ticket) => `#/requests?${tab === 'open' ? '' : `tab=${tab}&`}sel=${t.id}`;
   return (
-    <div className="emp">
+    <div className="emp requests">
       <div className="emp-head">
         <div><p className="eyebrow">YOUR REQUESTS</p><h1>My requests</h1><p className="muted">Everything you have asked IT for, where it is, and what happens next.</p></div>
         <div className="page-actions"><a className="btn" href="#/ask"><Icon name="spark" size={15} />Ask OpsPilot</a><a className="primary" href="#/tickets/new"><Icon name="plus" size={15} />Request something</a></div>
       </div>
-      <Tabs ariaLabel="Request filters" current={tab} items={[{ key: 'open', label: 'In progress', href: '#/requests' }, { key: 'waiting', label: 'Waiting for me', href: '#/requests?tab=waiting' }, { key: 'done', label: 'Completed', href: '#/requests?tab=done' }, { key: 'all', label: 'All', href: '#/requests?tab=all' }]} />
-      {error ? <div className="alert error" role="alert">{error}</div> : !data ? <Skeleton rows={5} /> : data.items.length ? (
-        <section className="emp-surface">
-          <ul className="req-list">{data.items.map((t) => <RequestRow key={t.id} t={t} href={`#/requests/${t.id}`} />)}</ul>
-          {data.total > data.pageSize && <div className="pagination"><span>{data.total} requests</span><div className="flex"><button className="btn-sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</button><button className="btn-sm" disabled={page * data.pageSize >= data.total} onClick={() => setPage(page + 1)}>Next</button></div></div>}
-        </section>
+      <Tabs ariaLabel="Request filters" current={tab} items={[{ key: 'open', label: 'In progress', href: tabHref('open') }, { key: 'waiting', label: 'Waiting for me', href: tabHref('waiting') }, { key: 'done', label: 'Completed', href: tabHref('done') }, { key: 'all', label: 'All', href: tabHref('all') }]} />
+      {error ? <div className="alert error" role="alert">{error}</div> : !data ? <Skeleton rows={5} /> : items.length ? (
+        <div className="req-split">
+          <section className="emp-surface req-split-list" aria-label="Request list">
+            <ul className="req-list">{items.map((t) => (
+              <li className={`req-row ${selected?.id === t.id ? 'is-selected' : ''}`} key={t.id}>
+                <a href={selHref(t)} aria-current={selected?.id === t.id ? 'true' : undefined}>
+                  <span className="req-main">
+                    <strong>{t.catalogItem?.name && t.catalogItem.name !== t.title ? `${t.catalogItem.name} · ${t.title}` : t.title}</strong>
+                    <small>{ticketKey(t)} · {t.type === 'REQUEST' ? 'Request' : 'Issue'} · {t.category.name} · submitted {fmtDay(t.createdAt)}</small>
+                  </span>
+                  <span className="req-next"><small>Next</small>{nextStep(t)}</span>
+                  <RequestBadge t={t} />
+                  <small className="req-when">{fmtAgo(t.updatedAt)}</small>
+                </a>
+              </li>
+            ))}</ul>
+            {data.total > data.pageSize && <div className="pagination"><span>{data.total} requests</span><div className="flex"><button className="btn-sm" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</button><button className="btn-sm" disabled={page * data.pageSize >= data.total} onClick={() => setPage(page + 1)}>Next</button></div></div>}
+          </section>
+          {selected && <RequestPreview key={selected.id} t={selected} user={user} refresh={refresh} />}
+        </div>
       ) : <EmptyState icon="inbox" title={tab === 'open' ? 'Nothing in progress' : 'Nothing here'} action={<a className="primary" href="#/tickets/new">Request something</a>}>{tab === 'open' ? 'When you ask IT for something it shows up here with its progress.' : 'Try another tab.'}</EmptyState>}
     </div>
+  );
+}
+
+/** The selected request, previewed beside the list: where it is, what happens next, the latest updates. */
+function RequestPreview({ t, user, refresh }: { t: Ticket; user: CurrentUser; refresh: number }) {
+  const { data: activity } = useRecord<ActivityItem[]>(`/tickets/${t.id}/activity`, refresh);
+  const steps = progressSteps(t);
+  const status = requestStatus(t);
+  const finished = ['RESOLVED', 'CLOSED'].includes(t.status);
+  const updates = (activity ?? []).filter((a) => a.kind === 'reply' || a.kind === 'approval' || (a.kind === 'event' && /status|reopen|resolved|created|assigned/i.test(a.title)));
+  return (
+    <aside className="emp-surface req-preview" aria-label="Selected request">
+      <div className="rp-head">
+        <div><p className="eyebrow"><span className="mono-id">{ticketKey(t)}</span> · {t.type === 'REQUEST' || t.catalogItemId ? 'Request' : 'Issue'}{t.catalogItem ? ` · ${t.catalogItem.name}` : ''}</p><h2>{t.title}</h2><p className="muted t-sm">Submitted {when(t.createdAt)}{t.assignee && !finished ? ` · handled by ${t.assignee.name}` : ''}</p></div>
+        <RequestBadge t={t} />
+      </div>
+      <ol className="progress compact" aria-label="Request progress">
+        {steps.map((s, i) => <li key={s.key} className={s.state}><span className="p-dot" aria-hidden="true">{s.state === 'done' ? <Icon name="check" size={12} /> : s.state === 'failed' ? <Icon name="x" size={12} /> : i + 1}</span><span className="p-label">{s.label}</span></li>)}
+      </ol>
+      <div className="rp-next"><span className="tile-icon sm" aria-hidden="true"><Icon name="arrow" size={16} /></span><div><strong>Next step</strong><p className="muted t-sm">{nextStep(t)}{status.tone === 'warn' && t.status === 'WAITING_FOR_USER' ? ' — reply to keep it moving.' : ''}</p></div></div>
+      <div className="rp-actions"><a className="primary" href={`#/requests/${t.id}`}>Open request<Icon name="arrow" size={14} /></a>{!finished && <a className="btn" href={`#/requests/${t.id}#reply`}>Reply</a>}</div>
+      <div className="section-title"><h3>Updates</h3><span className="muted t-caption">{updates.length ? `${updates.length} recorded` : ''}</span></div>
+      {!activity ? <Skeleton rows={3} /> : updates.length ? (
+        <ol className="sys-timeline">{[...updates].reverse().slice(0, 6).map((a) => <li key={`${a.kind}-${a.id}`} className={a.kind}><time>{clock(a.at)}<small>{fmtDay(a.at)}</small></time><span className="tl-mark" aria-hidden="true" /><span className="tl-body"><strong>{a.actor?.id === user.id ? 'You' : a.actor?.name ?? 'IT'}</strong> <span>{a.kind === 'reply' ? 'replied' : a.title.toLowerCase()}</span>{a.kind === 'reply' && a.body ? <small>{a.body.slice(0, 140)}{a.body.length > 140 ? '…' : ''}</small> : null}</span></li>)}</ol>
+      ) : <p className="muted t-sm">No updates yet.</p>}
+    </aside>
   );
 }
 

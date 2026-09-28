@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { CurrentUser } from '../shared/model';
 import { Icon, Logo } from './ui/icons';
-import { Crumbs } from './ui';
+import { Crumbs, useDismiss } from './ui';
 
 /* ── Navigation model ─────────────────────────────────────────────────── */
 
@@ -153,16 +153,10 @@ const CREATE = (user: CurrentUser) => [
 
 export function CreateMenu({ user }: { user: CurrentUser }) {
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.create-wrap')) setOpen(false); };
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', key);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key); };
-  }, [open]);
+  const wrap = useRef<HTMLDivElement>(null);
+  useDismiss(open, () => setOpen(false), wrap);
   return (
-    <div className="create-wrap">
+    <div className="create-wrap" ref={wrap}>
       <button className="primary create-btn" aria-label="Create" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
         <Icon name="plus" size={16} /><span className="nav-label">Create</span>
       </button>

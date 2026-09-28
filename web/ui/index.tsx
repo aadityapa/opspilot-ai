@@ -48,7 +48,8 @@ export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
   let hash = 0;
   for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) | 0;
   const hue = Math.abs(hash) % 360;
-  return <span className="avatar" title={name} style={{ width: size, height: size, fontSize: size * 0.38, background: `hsl(${hue} 60% 92%)`, color: `hsl(${hue} 45% 32%)` }}>{initials(name)}</span>;
+  // Only the hue is decided here; the theme decides lightness (see .avatar in base.css).
+  return <span className="avatar" title={name} style={{ width: size, height: size, fontSize: size * 0.38, ['--avatar-h' as string]: hue }}>{initials(name)}</span>;
 }
 export function AvatarGroup({ people, max = 4, size = 24 }: { people: Person[]; max?: number; size?: number }) {
   const shown = people.slice(0, max);
@@ -95,6 +96,21 @@ export function ErrorState({ error, retry, back }: { error: string; retry?: () =
     </div>
   );
 }
+/**
+ * A full-page state for forbidden, not-found and similar outcomes. One shape for every one of
+ * them so a person always recognises "this is a dead end, here is the way out".
+ */
+export function StatePage({ code, title, children, actions, role }: { code: string; title: string; children?: ReactNode; actions?: ReactNode; role?: 'alert' | 'status' }) {
+  return (
+    <div className="state-page" role={role}>
+      <span className="state-mark" aria-hidden="true"><Icon name={code === '403' ? 'lock' : code === '404' ? 'search' : 'alert'} size={22} /></span>
+      <p className="eyebrow">{code}</p>
+      <h1>{title}</h1>
+      {children && <p className="muted">{children}</p>}
+      {actions && <div className="page-actions">{actions}</div>}
+    </div>
+  );
+}
 /** Loading, error or content — the three states every data view has. */
 export function Loaded<T>({ data, error, skeletonRows = 5, children }: { data: T | undefined; error: string; skeletonRows?: number; children: (d: T) => ReactNode }) {
   if (error) return <ErrorState error={error} />;
@@ -127,19 +143,36 @@ export function FilterChip({ label, value, onRemove }: { label: string; value: s
   return <span className="chip">{label}: <strong>{value}</strong><button type="button" aria-label={`Remove filter ${label}`} onClick={onRemove}><Icon name="x" size={12} /></button></span>;
 }
 
+/* ── Popover dismissal ────────────────────────────────────────────────── */
+
+/**
+ * One rule for every popover (menus, the bell, the account menu): it closes on a click outside,
+ * on Escape, and on any navigation — a menu must never survive into the next page.
+ */
+export function useDismiss(open: boolean, close: () => void, ref: RefObject<HTMLElement | null>) {
+  // The latest `close` lives in a ref so the listeners are registered once per opening. Re-registering
+  // on every render would remove the hashchange listener mid-dispatch (React re-renders the route in a
+  // microtask between the app's own hashchange handler and ours) and the menu would survive navigation.
+  const latest = useRef(close);
+  latest.current = close;
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) latest.current(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); latest.current(); } };
+    const onNav = () => latest.current();
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('hashchange', onNav);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); window.removeEventListener('hashchange', onNav); };
+  }, [open, ref]);
+}
+
 /* ── Menu (dropdown) ──────────────────────────────────────────────────── */
 
 export function Menu({ trigger, children, align = 'left', label }: { trigger: (open: boolean) => ReactNode; children: ReactNode; align?: 'left' | 'right'; label: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', key);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', key); };
-  }, [open]);
+  useDismiss(open, () => setOpen(false), ref);
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
       <span onClick={() => setOpen(!open)} style={{ display: 'inline-flex' }}>{trigger(open)}</span>

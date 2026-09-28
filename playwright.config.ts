@@ -16,6 +16,12 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } },
     },
+    // The same suite on Gecko: `npm run test:e2e -- --project=firefox`. The UI refinement of
+    // September 2026 was verified on this project, without Chromium.
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 1000 } },
+    },
   ],
   webServer: [
     {

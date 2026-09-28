@@ -3,10 +3,12 @@
    One source of truth for colour, type, spacing, radius, elevation, motion,
    layers and semantic states.
 
-   Dark is the product's default: a deep navy field with indigo light, glowing
-   surfaces and vivid but AA-safe state colours. Light is a deliberate second
-   palette on the same hues, not an inversion. Every component and page reads
-   from here; nothing else declares a colour.
+   Dark is the product's default: matte navy depth layers, restrained
+   indigo/violet gloss on primary controls, thin illuminated edges for the
+   selected state. Light is a deliberate second palette on the same hues, not
+   an inversion. Every component and page reads from here; nothing else
+   declares a colour. Every text/background pair below was measured for
+   WCAG AA (normal text ≥ 4.5:1) and re-checked with axe in both themes.
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -14,7 +16,7 @@
   --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
   --fs-display: 2rem;     --lh-display: 2.5rem;   /* 32 / 40 */
-  --fs-h1: 1.625rem;      --lh-h1: 2rem;          /* 26 / 32 */
+  --fs-h1: 1.75rem;       --lh-h1: 2.125rem;      /* 28 / 34 — page titles */
   --fs-number: 1.75rem;   --lh-number: 2rem;      /* operational numbers 28 / 32 */
   --fs-h2: 1rem;          --lh-h2: 1.375rem;      /* 16 / 22 */
   --fs-h3: 0.875rem;      --lh-h3: 1.25rem;       /* 14 / 20 */
@@ -25,7 +27,7 @@
   --fs-mono: 0.78rem;
   --tracking-label: 0.06em;
 
-  /* ── Spacing (4px base) ─────────────────────────────────────────────── */
+  /* ── Spacing (8px system, 4px half-step) ────────────────────────────── */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px;
   --s8: 32px; --s10: 40px; --s12: 48px; --s16: 64px;
 
@@ -33,48 +35,54 @@
   --r-sm: 6px; --r-md: 9px; --r-lg: 14px; --r-xl: 18px; --r-pill: 999px;
 
   /* ── Motion ─────────────────────────────────────────────────────────── */
-  --t-fast: 150ms cubic-bezier(0.2, 0, 0, 1);
-  --t-med: 220ms cubic-bezier(0.2, 0, 0, 1);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --t-fast: 150ms var(--ease);      /* control feedback */
+  --t-med: 220ms var(--ease);       /* dialogs, drawers, panes */
+  --t-slow: 320ms var(--ease);      /* chart reveal */
+  --lift: translateY(-1px);
 
   /* ── Layers ─────────────────────────────────────────────────────────── */
   --z-sticky: 20; --z-dropdown: 40; --z-drawer: 60; --z-modal: 80; --z-toast: 100; --z-palette: 120;
 
   /* ── Layout ─────────────────────────────────────────────────────────── */
   --sidebar-w: 236px; --sidebar-w-collapsed: 68px; --header-h: 60px; --content-max: 2200px;
+  --form-max: 720px; --reading-max: 74ch;
 
-  /* ── Dark palette (default) ─────────────────────────────────────────── */
-  --bg: #070b14;
-  --bg-glow: radial-gradient(900px 520px at 85% -10%, rgba(79, 107, 255, 0.16), transparent 62%),
-             radial-gradient(700px 480px at -10% 105%, rgba(108, 76, 246, 0.12), transparent 60%);
-  --surface: #0d1420;
-  --surface-2: #121b2b;
-  --surface-3: #182337;
-  --surface-4: #1f2c45;
-  --border: rgba(126, 150, 255, 0.14);
-  --border-strong: rgba(126, 150, 255, 0.30);
-  --hairline: rgba(126, 150, 255, 0.10);
-  --text: #eef2ff;
-  --text-2: #b8c3e0;
-  --text-3: #8391b3;
+  /* ── Dark palette (default) — matte depth layers ────────────────────── */
+  --bg: #080c16;
+  --bg-glow: radial-gradient(900px 520px at 85% -10%, rgba(89, 101, 255, 0.10), transparent 62%),
+             radial-gradient(700px 480px at -10% 105%, rgba(119, 86, 246, 0.07), transparent 60%);
+  --surface: #111827;      /* panel */
+  --surface-2: #172033;    /* raised panel, hover */
+  --surface-3: #1c2740;    /* chips, tracks, inputs on raised */
+  --surface-4: #202b44;    /* tooltips, deepest raised */
+  --border: #29344b;
+  --border-strong: #3a4763;
+  --hairline: rgba(41, 52, 75, 0.7);
+  --text: #f2f5ff;
+  --text-2: #a7b3cc;
+  --text-3: #8795b1;
   --text-inverse: #0b1220;
-  --violet: #a78bfa; --violet-soft: #2a2160; --violet-text: #c9b8ff;
+  --violet: #7756f6; --violet-soft: #26205a; --violet-text: #c9b8ff;
 
-  --accent: #4f6bff;
-  --accent-strong: #6d85ff;
-  --accent-soft: #172452;
-  --accent-text: #a1b4ff;
-  --accent-2: #6a4cf6;
-  --accent-gradient: linear-gradient(135deg, #4560f5 0%, #5a58f8 55%, #6a4cf6 100%);
-  --accent-glow: 0 0 0 1px rgba(99, 125, 255, 0.35), 0 10px 30px rgba(79, 107, 255, 0.35);
-  --cyan: #38bdf8;
-  --cyan-soft: #0f2e42;
-  --cyan-text: #8ad9ff;
+  --accent: #5965ff;
+  --accent-strong: #7a84ff;
+  --accent-soft: #1a2150;
+  --accent-text: #9aa3ff;
+  --accent-2: #7756f6;
+  /* Primary control: the gradient starts on a shade that keeps white text ≥ 5.4:1. */
+  --accent-gradient: linear-gradient(135deg, #4a55f0 0%, #5a5cf4 55%, #6b52f2 100%);
+  --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  --accent-glow: 0 0 0 1px rgba(89, 101, 255, 0.35), 0 8px 24px rgba(89, 101, 255, 0.28);
+  --cyan: #63d9f1;
+  --cyan-soft: #0f2e3a;
+  --cyan-text: #8fe4f5;
 
   --success: #2fd27d; --success-soft: #0b3527; --success-text: #7ff0b1;
   --warning: #f2b23a; --warning-soft: #3b2a0a; --warning-text: #ffd27a;
   --danger: #f2555f;  --danger-soft: #45141c;  --danger-text: #ff9ea4;
-  --info: #4f6bff;    --info-soft: #172452;    --info-text: #a1b4ff;
-  --neutral: #8391b3; --neutral-soft: #1a2436; --neutral-text: #c0cbe6;
+  --info: #5965ff;    --info-soft: #1a2150;    --info-text: #9aa3ff;
+  --neutral: #8795b1; --neutral-soft: #1c2740; --neutral-text: #c0cbe6;
 
   /* Priority: always paired with text (P1–P4), never colour alone. */
   --p1: #ef3f52; --p1-soft: #4a121e; --p1-text: #ff9aa6;
@@ -84,38 +92,40 @@
 
   /* Ticket status hues. `-text` is the AA-safe ink on the matching `-soft` background. */
   --st-open: #8ea1cf;        --st-open-soft: #1c2740;      --st-open-text: #c9d4f2;
-  --st-progress: #5b7cff;    --st-progress-soft: #14297a;  --st-progress-text: #b0c2ff;
+  --st-progress: #5b7cff;    --st-progress-soft: #1e2a6e;  --st-progress-text: #b3c0ff;
   --st-waiting: #f2b23a;     --st-waiting-soft: #3b2a0a;   --st-waiting-text: #ffd27a;
   --st-resolved: #2fd27d;    --st-resolved-soft: #0b3527;  --st-resolved-text: #7ff0b1;
   --st-closed: #6f7d9c;      --st-closed-soft: #171e2e;    --st-closed-text: #a9b5d0;
 
   /* Chart series */
-  --chart-1: #4f6bff; --chart-2: #8b5cf6; --chart-3: #2fd27d; --chart-4: #f2b23a; --chart-5: #f2555f; --chart-6: #38bdf8;
+  --chart-1: #5965ff; --chart-2: #8b5cf6; --chart-3: #2fd27d; --chart-4: #f2b23a; --chart-5: #f2555f; --chart-6: #63d9f1;
 
-  /* Navigation */
-  --nav-bg: #090e19;
-  --nav-bg-2: #0d1420;
-  --nav-text: #9aa8cb;
+  /* Navigation rail (stays dark in both themes) */
+  --nav-bg: #0b1020;
+  --nav-bg-2: #111827;
+  --nav-text: #a7b3cc;
   --nav-text-strong: #ffffff;
-  --nav-muted: #7f8db0;
-  --nav-hover: rgba(126, 150, 255, 0.08);
-  --nav-active: linear-gradient(90deg, rgba(79, 107, 255, 0.34), rgba(79, 107, 255, 0.16));
-  --nav-active-border: rgba(126, 150, 255, 0.38);
-  --nav-border: rgba(126, 150, 255, 0.10);
-  --nav-accent: #8fa6ff;
+  --nav-muted: #8290b5;
+  --nav-hover: rgba(167, 179, 204, 0.08);
+  --nav-active: linear-gradient(90deg, rgba(89, 101, 255, 0.30), rgba(89, 101, 255, 0.12));
+  --nav-active-border: rgba(122, 132, 255, 0.45);
+  --nav-border: #1a2236;
+  --nav-accent: #9aa3ff;
 
-  /* Elevation */
-  --shadow-sm: 0 1px 0 rgba(126, 150, 255, 0.04);
-  --shadow-card: 0 0 0 1px rgba(126, 150, 255, 0.02), 0 12px 32px rgba(2, 6, 18, 0.45);
-  --shadow-md: 0 8px 24px rgba(2, 6, 18, 0.55), 0 1px 3px rgba(2, 6, 18, 0.4);
-  --shadow-lg: 0 24px 64px rgba(2, 6, 18, 0.7), 0 0 0 1px rgba(126, 150, 255, 0.12);
-  --glow-soft: 0 0 32px rgba(79, 107, 255, 0.14);
-  --ring: 0 0 0 3px rgba(79, 107, 255, 0.4);
+  /* Elevation — matte: an inset upper highlight and a short, soft drop; no glow by default. */
+  --shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 24px -14px rgba(0, 0, 0, 0.55);
+  --shadow-md: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 56px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --glow-soft: 0 0 24px rgba(89, 101, 255, 0.14);
+  /* Selected state: a thin illuminated edge, used on one thing at a time. */
+  --edge-light: 0 0 0 1px rgba(122, 132, 255, 0.55), 0 0 16px rgba(89, 101, 255, 0.22);
+  --ring: 0 0 0 3px rgba(89, 101, 255, 0.45);
 
   /* Inputs */
-  --input-bg: #0a101c;
-  --input-border: rgba(126, 150, 255, 0.22);
-  --input-placeholder: #6d7a9c;
+  --input-bg: #0d1322;
+  --input-border: #2e3a54;
+  --input-placeholder: #6f7d9c;
 
   /* Compatibility aliases used by older modules. */
   --panel: var(--surface);
@@ -134,13 +144,13 @@
 
 [data-theme='light'] {
   --bg: #eef1f8;
-  --bg-glow: radial-gradient(900px 520px at 85% -10%, rgba(79, 107, 255, 0.10), transparent 62%),
-             radial-gradient(700px 480px at -10% 105%, rgba(108, 76, 246, 0.07), transparent 60%);
+  --bg-glow: radial-gradient(900px 520px at 85% -10%, rgba(74, 85, 240, 0.10), transparent 62%),
+             radial-gradient(700px 480px at -10% 105%, rgba(119, 86, 246, 0.06), transparent 60%);
   --surface: #ffffff;
   --surface-2: #f5f7fc;
   --surface-3: #e9edf7;
   --surface-4: #dde3f2;
-  --border: #dee3f0;
+  --border: #dde2ef;
   --border-strong: #bcc7e0;
   --hairline: rgba(20, 34, 80, 0.07);
   --text: #0b1226;
@@ -155,7 +165,8 @@
   --accent-text: #2a43d4;
   --accent-2: #6a4cf6;
   --accent-gradient: linear-gradient(135deg, #3b57f0 0%, #4b4ff0 55%, #6a4cf6 100%);
-  --accent-glow: 0 0 0 1px rgba(59, 87, 240, 0.25), 0 10px 24px rgba(59, 87, 240, 0.28);
+  --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  --accent-glow: 0 0 0 1px rgba(59, 87, 240, 0.25), 0 8px 20px rgba(59, 87, 240, 0.24);
   --cyan: #0e8fa8;
   --cyan-soft: #e3f5f8;
   --cyan-text: #0b6478;
@@ -179,23 +190,23 @@
 
   --chart-1: #3b57f0; --chart-2: #7c3aed; --chart-3: #16a34a; --chart-4: #d97706; --chart-5: #dc2626; --chart-6: #0891b2;
 
-  /* Navigation stays dark in light mode: the one constant of the OpsPilot identity. */
-  --nav-bg: #0a1020;
-  --nav-bg-2: #0f172a;
-  --nav-text: #a5b1d0;
+  --nav-bg: #0b1020;
+  --nav-bg-2: #111827;
+  --nav-text: #a7b3cc;
   --nav-text-strong: #ffffff;
   --nav-muted: #8492b6;
-  --nav-hover: rgba(126, 150, 255, 0.10);
-  --nav-active: linear-gradient(90deg, rgba(79, 107, 255, 0.42), rgba(79, 107, 255, 0.2));
-  --nav-active-border: rgba(126, 150, 255, 0.42);
+  --nav-hover: rgba(167, 179, 204, 0.10);
+  --nav-active: linear-gradient(90deg, rgba(89, 101, 255, 0.40), rgba(89, 101, 255, 0.18));
+  --nav-active-border: rgba(122, 132, 255, 0.5);
   --nav-border: rgba(255, 255, 255, 0.07);
-  --nav-accent: #8fa6ff;
+  --nav-accent: #9aa3ff;
 
   --shadow-sm: none;
-  --shadow-card: 0 1px 2px rgba(15, 26, 46, 0.05), 0 8px 24px rgba(15, 26, 46, 0.06);
+  --shadow-card: 0 1px 2px rgba(15, 26, 46, 0.05), 0 8px 24px -12px rgba(15, 26, 46, 0.12);
   --shadow-md: 0 6px 16px rgba(15, 26, 46, 0.10), 0 1px 3px rgba(15, 26, 46, 0.06);
   --shadow-lg: 0 20px 48px rgba(15, 26, 46, 0.16), 0 2px 8px rgba(15, 26, 46, 0.06);
-  --glow-soft: 0 0 32px rgba(59, 87, 240, 0.08);
+  --glow-soft: 0 0 24px rgba(59, 87, 240, 0.08);
+  --edge-light: 0 0 0 1px rgba(59, 87, 240, 0.45), 0 0 14px rgba(59, 87, 240, 0.16);
   --ring: 0 0 0 3px rgba(59, 87, 240, 0.28);
 
   --input-bg: #ffffff;

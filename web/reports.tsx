@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { useRecord } from './operations';
 import { labels, priorities, ticketTypes, type Department, type Report, type ReportKind } from '../shared/model';
 import { Icon } from './ui/icons';
-import { EmptyState, ErrorState, fmtDate } from './ui';
+import { EmptyState, ErrorState, StatePage, fmtDate } from './ui';
+import { RankBars, SegmentBar, Sparkline } from './ui/charts';
+import { ReportGlyph } from './ui/art';
 import { PRIORITY_CODE, PRIORITY_WORD } from './ui/marks';
 
 /**
@@ -39,23 +42,91 @@ export function ReportsPage({ refresh, route }: { refresh: number; route: string
   const priority = q.get('priority') ?? '';
   const params = new URLSearchParams({ days: String(days), ...(departmentId ? { departmentId } : {}), ...(type ? { type } : {}), ...(priority ? { priority } : {}) });
   if (kind && KINDS.has(kind)) return <ReportWorkspace kind={kind} params={params} refresh={refresh} />;
+  // An unknown kind is a dead link, and says so; it never silently shows the library instead.
+  if (kind) return (
+    <StatePage code="404" title="There is no report by that name." actions={<><a className="primary" href="#/reports">Open the reports library</a><a className="btn" href="#/analytics">Service Intelligence</a></>}>
+      “{kind}” is not one of the {KINDS.size} report kinds this workspace produces. Pick one from the library — every report there is generated from live rows under the same filters.
+    </StatePage>
+  );
+  return <ReportLibrary params={params} refresh={refresh} query={q} />;
+}
+
+/* ── Library: one card per report, with a preview built from the report's own rows ─────── */
+const GROUP_KEYS = ['All', ...LIBRARY.map((g) => g.group)];
+function ReportLibrary({ params, refresh, query }: { params: URLSearchParams; refresh: number; query: URLSearchParams }) {
+  const [q, setQ] = useState('');
+  const [group, setGroup] = useState(query.get('group') ?? 'All');
+  const lower = q.trim().toLowerCase();
+  const groups = LIBRARY.filter((g) => group === 'All' || g.group === group)
+    .map((g) => ({ ...g, kinds: g.kinds.filter((k) => !lower || k.title.toLowerCase().includes(lower) || k.blurb.toLowerCase().includes(lower)) }))
+    .filter((g) => g.kinds.length);
   return (
     <div className="emp reports">
       <header className="emp-head">
-        <div><p className="eyebrow">REPORTING</p><h1>Service reports</h1><p className="muted">Precise, filterable evidence behind the analytics. Every report can be inspected here or exported as CSV under the same filters.</p></div>
+        <div><p className="eyebrow">REPORTING</p><h1>Service reports</h1><p className="muted">Precise, filterable evidence behind the analytics. Every report can be inspected here or exported as CSV under the same filters; the previews below are drawn from the same rows for the last {params.get('days') ?? '30'} days.</p></div>
         <div className="page-actions"><a className="btn" href={`#/analytics?${params}`}><Icon name="chart" size={15} />Service Intelligence</a></div>
       </header>
-      {LIBRARY.map((g) => (
+      <section className="querybar report-library-bar" aria-label="Find a report">
+        <div className="q-search"><Icon name="search" size={16} /><input aria-label="Search reports" placeholder="Search reports…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        <div className="tabs report-groups" role="tablist" aria-label="Report groups">
+          {GROUP_KEYS.map((g) => <button key={g} role="tab" aria-selected={group === g} className={group === g ? 'active' : ''} onClick={() => setGroup(g)}>{g}</button>)}
+        </div>
+      </section>
+      {groups.length ? groups.map((g) => (
         <section key={g.group} className="report-group">
           <div className="section-title"><h2>{g.group}</h2><span className="muted t-caption">{g.blurb}</span></div>
           <ul className="report-cards">
-            {g.kinds.map((k) => (
-              <li key={k.kind}><a href={`#/reports/${k.kind}?${params}`}><span className="hr-icon" aria-hidden="true"><Icon name={k.icon} size={18} /></span><span className="rc-body"><strong>{k.title}</strong><small>{k.blurb}</small></span><Icon name="chevron" size={16} /></a></li>
-            ))}
+            {g.kinds.map((k) => <ReportCard key={k.kind} meta={k} params={params} refresh={refresh} />)}
           </ul>
         </section>
-      ))}
+      )) : <EmptyState icon="reports" title="No report matches" action={<button onClick={() => { setQ(''); setGroup('All'); }}>Clear</button>}>Try another word — report names and descriptions are searched.</EmptyState>}
     </div>
+  );
+}
+
+const dayKey = (iso: string) => iso.slice(0, 10);
+/** A preview derived from the report's own rows: never a picture, never a placeholder figure. */
+function ReportCard({ meta, params, refresh }: { meta: { kind: ReportKind; title: string; blurb: string; icon: string }; params: URLSearchParams; refresh: number }) {
+  const { data: r, error } = useRecord<Report>(`/reports/${meta.kind}?${params}`, refresh);
+  const hue = meta.kind === 'sla' || meta.kind === 'resolution' ? 'green' : meta.kind === 'csat' ? 'amber' : meta.kind === 'departments' || meta.kind === 'agents' ? 'violet' : meta.kind === 'assets' ? 'cyan' : 'indigo';
+  const preview = (() => {
+    if (!r) return null;
+    const rows = r.rows;
+    if (['tickets', 'requests', 'assets', 'resolution'].includes(r.kind)) {
+      const key = r.kind === 'resolution' ? 'resolvedAt' : 'createdAt';
+      const days = Number(r.filters.days);
+      const counts = new Map<string, number>();
+      for (let i = days - 1; i >= 0; i--) counts.set(dayKey(new Date(Date.now() - i * 86400000).toISOString()), 0);
+      rows.forEach((row) => { const d = row[key]; if (typeof d === 'string' && counts.has(dayKey(d))) counts.set(dayKey(d), (counts.get(dayKey(d)) ?? 0) + 1); });
+      const values = [...counts.values()];
+      return values.some((v) => v > 0) ? <Sparkline values={values} color={`var(--chart-${hue === 'green' ? 3 : hue === 'cyan' ? 6 : 1})`} width={220} height={44} /> : <span className="muted t-caption">No rows in the period</span>;
+    }
+    if (r.kind === 'sla') {
+      const met = rows.filter((x) => x.resolutionOutcome === 'Met').length, breached = rows.filter((x) => String(x.resolutionOutcome).startsWith('Breached')).length, running = rows.length - met - breached;
+      return <SegmentBar ariaLabel="Resolution outcomes" height={8} segments={[{ label: 'Met', value: met, color: 'var(--success)' }, { label: 'Breached', value: breached, color: 'var(--danger)' }, { label: 'Running', value: running, color: 'var(--neutral)' }]} />;
+    }
+    if (r.kind === 'csat') {
+      const dist = [1, 2, 3, 4, 5].map((n) => ({ label: `${n}★`, value: rows.filter((x) => Number(x.score) === n).length }));
+      return dist.some((d) => d.value) ? <RankBars rows={dist} color="var(--chart-4)" /> : <span className="muted t-caption">No ratings in the period</span>;
+    }
+    const numeric = r.kind === 'departments' ? 'raised' : 'assigned';
+    const top = [...rows].sort((a, b) => Number(b[numeric] ?? 0) - Number(a[numeric] ?? 0)).slice(0, 4).map((x) => ({ label: String(x.name), value: Number(x[numeric] ?? 0) }));
+    return top.some((t) => t.value) ? <RankBars rows={top} color="var(--chart-2)" /> : <span className="muted t-caption">Nothing to rank in the period</span>;
+  })();
+  return (
+    <li className="report-card">
+      <a href={`#/reports/${meta.kind}?${params}`} aria-label={`Open the ${meta.title} report`}>
+        <div className="rc-head">
+          <span className={`gloss-tile sm ${hue}`} aria-hidden="true"><ReportGlyph kind={meta.kind} /></span>
+          <span className="rc-body"><strong>{meta.title}</strong><small>{meta.blurb}</small></span>
+        </div>
+        <div className="rc-preview" aria-hidden="true">{error ? <span className="muted t-caption">Preview unavailable</span> : !r ? <span className="skeleton rc-skeleton" /> : preview}</div>
+        <div className="rc-foot">
+          <span className="rc-summary">{r ? r.summary.slice(0, 2).map((x) => <span key={x.label}><strong>{x.value}</strong> {x.label.toLowerCase()}</span>) : <span className="muted">Loading…</span>}</span>
+          <span className="rc-open">Open report<Icon name="arrow" size={14} /></span>
+        </div>
+      </a>
+    </li>
   );
 }
 

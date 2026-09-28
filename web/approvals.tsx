@@ -4,6 +4,7 @@ import { useRecord, when, type Act } from './operations';
 import { labels, type Approval, type CurrentUser } from '../shared/model';
 import { Icon } from './ui/icons';
 import { Avatar, EmptyState, Modal, Skeleton, Tabs, fmtAgo, ticketKey } from './ui';
+import { useMedia } from './app-shell';
 
 type ApprovalRow = Approval & { ticket: { id: string; number: number; title: string; status: string; type: string; createdAt: string; formData: Record<string, unknown> | null; requester: { id: string; name: string; role: string }; catalogItem: { name: string; icon: string } | null } };
 
@@ -19,6 +20,8 @@ export function ApprovalsPage({ user, act, busy, refresh, route }: { user: Curre
   const { data, error } = useRecord<ApprovalRow[]>('/approvals', refresh);
   const { data: requested } = useRecord<ApprovalRow[]>('/approvals?scope=requester', refresh);
   const [reviewing, setReviewing] = useState<ApprovalRow | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const narrow = useMedia('(max-width: 1100px)');
   const [confirming, setConfirming] = useState<{ a: ApprovalRow; decision: 'APPROVED' | 'REJECTED' } | null>(null);
   const [note, setNote] = useState('');
   const [done, setDone] = useState<{ a: ApprovalRow; decision: 'APPROVED' | 'REJECTED' } | null>(null);
@@ -60,23 +63,39 @@ export function ApprovalsPage({ user, act, busy, refresh, route }: { user: Curre
 
       {tab === 'mine' && (
         !pending.length ? <EmptyState icon="checks" title="Nothing to approve">When a colleague requests something that needs your sign-off, it appears here and in your notifications.</EmptyState> : (
-          <ul className="approval-list">
-            {pending.map((a) => (
-              <li key={a.id} className="approval-card">
-                <div className="ap-who"><Avatar name={a.ticket.requester.name} size={40} /><div><strong>{a.ticket.requester.name}</strong><small>{labels[a.ticket.requester.role]}</small></div></div>
-                <div className="ap-what">
-                  <p className="eyebrow">{a.ticket.catalogItem ? `${a.ticket.catalogItem.name} request` : labels[a.ticket.type]}</p>
-                  <strong>{a.ticket.title}</strong>
-                  {why(a) && <p className="ap-why"><span>Business reason:</span> {why(a)}</p>}
-                  <small className="muted">{ticketKey(a.ticket)} · requested {fmtAgo(a.ticket.createdAt)} · waiting {fmtAgo(a.createdAt).replace(' ago', '')}</small>
+          <div className="ap-split">
+            <ul className="approval-list ap-queue" aria-label="Requests waiting for your decision">
+              {pending.map((a) => {
+                const current = !narrow && (selectedId ? selectedId === a.id : pending[0].id === a.id);
+                return (
+                  <li key={a.id} className={`approval-card ${current ? 'is-selected' : ''}`} aria-current={current ? 'true' : undefined}>
+                    <div className="ap-who"><Avatar name={a.ticket.requester.name} size={40} /><div><strong>{a.ticket.requester.name}</strong><small>{labels[a.ticket.requester.role]}</small></div></div>
+                    <div className="ap-what">
+                      <p className="eyebrow">{a.ticket.catalogItem ? `${a.ticket.catalogItem.name} request` : labels[a.ticket.type]}</p>
+                      <strong>{a.ticket.title}</strong>
+                      {why(a) && <p className="ap-why"><span>Business reason:</span> {why(a)}</p>}
+                      <small className="muted">{ticketKey(a.ticket)} · requested {fmtAgo(a.ticket.createdAt)} · waiting {fmtAgo(a.createdAt).replace(' ago', '')}</small>
+                    </div>
+                    <div className="ap-actions">
+                      <button onClick={() => { setNote(''); if (narrow) setReviewing(a); else { setSelectedId(a.id); document.getElementById('ap-review')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } }}><Icon name="eye" size={15} />Review</button>
+                      <button className="primary" onClick={() => setConfirming({ a, decision: 'APPROVED' })}>Approve</button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {!narrow && (() => { const a = pending.find((x) => x.id === selectedId) ?? pending[0]; return (
+              <section className="emp-surface ap-review" id="ap-review" role="region" aria-label="Review request" key={a.id}>
+                <ReviewBody a={a} note={note} setNote={setNote} what={what} why={why} />
+                <div className="ap-review-actions">
+                  <a className="text-btn" href={`#/tickets/${a.ticket.id}`}>Open the full request</a>
+                  <span className="grow" />
+                  <button className="danger" onClick={() => setConfirming({ a, decision: 'REJECTED' })}>Reject</button>
+                  <button className="primary" onClick={() => setConfirming({ a, decision: 'APPROVED' })}><Icon name="check" size={15} />Approve</button>
                 </div>
-                <div className="ap-actions">
-                  <button onClick={() => { setReviewing(a); setNote(''); }}><Icon name="eye" size={15} />Review</button>
-                  <button className="primary" onClick={() => setConfirming({ a, decision: 'APPROVED' })}>Approve</button>
-                </div>
-              </li>
-            ))}
-          </ul>
+              </section>
+            ); })()}
+          </div>
         )
       )}
 
@@ -116,14 +135,7 @@ export function ApprovalsPage({ user, act, busy, refresh, route }: { user: Curre
 
       {reviewing && (
         <Modal title="Review request" onClose={() => setReviewing(null)} wide footer={<><button onClick={() => setReviewing(null)}>Cancel</button><span className="grow" /><button className="danger" onClick={() => { setConfirming({ a: reviewing, decision: 'REJECTED' }); setReviewing(null); }}>Reject</button><button className="primary" onClick={() => { setConfirming({ a: reviewing, decision: 'APPROVED' }); setReviewing(null); }}>Approve</button></>}>
-          <div className="review-head"><Avatar name={reviewing.ticket.requester.name} size={40} /><div><strong>{reviewing.ticket.requester.name}</strong><small className="muted">{labels[reviewing.ticket.requester.role]} · asked {when(reviewing.createdAt)}</small></div><span className="req-status warn"><i />Awaiting your decision</span></div>
-          <dl className="review-list">
-            <div><dt>Request</dt><dd><strong>{what(reviewing)}</strong>{reviewing.ticket.catalogItem && reviewing.ticket.title !== reviewing.ticket.catalogItem.name ? <><br />{reviewing.ticket.title}</> : null}<br /><span className="mono-id">{ticketKey(reviewing.ticket)}</span></dd></div>
-            {why(reviewing) && <div><dt>Business justification</dt><dd>{why(reviewing)}</dd></div>}
-            {reviewing.ticket.formData && Object.keys(reviewing.ticket.formData).length > 0 && <div><dt>Request details</dt><dd><dl className="properties compact">{Object.entries(reviewing.ticket.formData).map(([k, v]) => <div key={k}><dt>{k.replace(/_/g, ' ')}</dt><dd>{String(v)}</dd></div>)}</dl></dd></div>}
-            <div><dt>Approval history</dt><dd>Waiting on you since {when(reviewing.createdAt)}. Approving moves the request to IT fulfilment; rejecting closes it and tells the requester why.</dd></div>
-            <div><dt>Note to requester</dt><dd><input aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="Optional for approval · required for rejection" /></dd></div>
-          </dl>
+          <ReviewBody a={reviewing} note={note} setNote={setNote} what={what} why={why} />
           <p className="muted fine"><a href={`#/tickets/${reviewing.ticket.id}`}>Open the full request</a> if you need the conversation or attachments.</p>
         </Modal>
       )}
@@ -141,5 +153,27 @@ export function ApprovalsPage({ user, act, busy, refresh, route }: { user: Curre
         </Modal>
       )}
     </div>
+  );
+}
+
+/** Who, what, why, and the decision's consequence — the same content in the pane and in the narrow-screen dialog. */
+function ReviewBody({ a, note, setNote, what, why }: { a: ApprovalRow; note: string; setNote: (v: string) => void; what: (a: ApprovalRow) => string; why: (a: ApprovalRow) => string }) {
+  const f = a.ticket.formData ?? {};
+  const cost = Object.entries(f).find(([k]) => /cost|price|budget/i.test(k));
+  return (
+    <>
+      <div className="review-head"><Avatar name={a.ticket.requester.name} size={40} /><div><strong>{a.ticket.requester.name}</strong><small className="muted">{labels[a.ticket.requester.role]} · asked {when(a.createdAt)}</small></div><span className="req-status warn"><i />Awaiting your decision</span></div>
+      <div className="review-summary">
+        <div><span className="eyebrow">Request</span><strong>{what(a)}</strong>{a.ticket.catalogItem && a.ticket.title !== a.ticket.catalogItem.name ? <small>{a.ticket.title}</small> : null}<small className="mono-id">{ticketKey(a.ticket)}</small></div>
+        {cost && <div><span className="eyebrow">{cost[0].replace(/_/g, ' ')}</span><strong>{String(cost[1])}</strong></div>}
+        <div><span className="eyebrow">If approved</span><strong>Goes to IT fulfilment</strong><small>{a.ticket.requester.name} is notified</small></div>
+      </div>
+      <dl className="review-list">
+        {why(a) && <div><dt>Business justification</dt><dd className="review-quote">“{why(a)}”</dd></div>}
+        {Object.keys(f).length > 0 && <div><dt>Request details</dt><dd><dl className="properties compact">{Object.entries(f).map(([k, v]) => <div key={k}><dt>{k.replace(/_/g, ' ')}</dt><dd>{String(v)}</dd></div>)}</dl></dd></div>}
+        <div><dt>Approval history</dt><dd>Waiting on you since {when(a.createdAt)}. Rejecting closes the request and tells the requester why.</dd></div>
+        <div><dt>Note to requester</dt><dd><input aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="Optional for approval · required for rejection" /></dd></div>
+      </dl>
+    </>
   );
 }

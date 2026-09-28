@@ -1,6 +1,6 @@
 import { api } from './api';
 import { useRecord, type Act } from './operations';
-import { labels, priorities, priorityFor, statuses, ticketTypes, transitions, type CatalogItem, type Department, type SlaPolicy } from '../shared/model';
+import { labels, priorities, priorityFor, statuses, ticketTypes, transitions, type CatalogItem, type Department, type SlaPolicy, type TicketEvent } from '../shared/model';
 import { Icon } from './ui/icons';
 import { ADMIN_AREAS, AdminLayout, SettingsSection } from './admin-nav';
 import { PRIORITY_CODE, PRIORITY_WORD, PriorityMark, StatusMark } from './ui/marks';
@@ -12,29 +12,46 @@ export function AdminOverview({ refresh }: { refresh: number }) {
   const { data: catalog } = useRecord<CatalogItem[]>('/catalog', refresh);
   const { data: sla } = useRecord<SlaPolicy[]>('/admin/sla', refresh);
   const { data: security } = useRecord<SecurityPosture>('/admin/security', refresh);
-  const facts: { label: string; value: string; href: string }[] = [
-    { label: 'Departments', value: departments ? String(departments.length) : '…', href: '#/admin/departments' },
-    { label: 'Catalog services', value: catalog ? `${catalog.length} active` : '…', href: '#/admin/catalog' },
-    { label: 'Service levels', value: sla ? `${sla.length} priorities` : '…', href: '#/admin/sla' },
-    { label: 'Accounts', value: security ? `${security.accounts.total} · ${security.accounts.mfaEnabled} with MFA` : '…', href: '#/admin/users' },
-    { label: 'Active sessions', value: security ? String(security.accounts.activeSessions) : '…', href: '#/admin/security' },
-    { label: 'Locked accounts', value: security ? String(security.accounts.locked) : '…', href: '#/admin/users' },
+  const { data: audit } = useRecord<{ items: TicketEvent[]; total: number }>('/admin/audit?page=1&pageSize=6', refresh);
+  const facts: { label: string; value: string; sub: string; href: string; icon: string; tone?: string }[] = [
+    { label: 'Accounts', value: security ? String(security.accounts.total) : '…', sub: security ? `${security.accounts.mfaEnabled} with a second factor · ${security.accounts.disabled} disabled` : '', href: '#/admin/users', icon: 'user' },
+    { label: 'Departments', value: departments ? String(departments.length) : '…', sub: 'Teams, cost centres, managers', href: '#/admin/departments', icon: 'building' },
+    { label: 'Catalog services', value: catalog ? String(catalog.length) : '…', sub: 'Published and requestable', href: '#/admin/catalog', icon: 'grid' },
+    { label: 'Service levels', value: sla ? String(sla.length) : '…', sub: 'Priorities with targets · 24/7 clock', href: '#/admin/sla', icon: 'clock' },
+    { label: 'Active sessions', value: security ? String(security.accounts.activeSessions) : '…', sub: security ? `${security.policy.sessionHours}-hour lifetime` : '', href: '#/admin/security', icon: 'shield' },
+    { label: 'Locked accounts', value: security ? String(security.accounts.locked) : '…', sub: security?.accounts.locked ? 'Unlock from Accounts & access' : 'Nothing locked out', href: '#/admin/users', icon: 'lock', tone: security?.accounts.locked ? 'warn' : '' },
   ];
   return (
     <AdminLayout current="overview">
-      <section className="mywork-strip admin-strip" aria-label="Configuration at a glance">
-        <p className="eyebrow strip-eyebrow">At a glance</p>
-        {facts.map((f) => <a key={f.label} className="strip-cell" href={f.href}><strong>{f.value}</strong><span>{f.label}</span></a>)}
+      <section className="admin-facts" aria-label="Configuration at a glance">
+        {facts.map((f) => <a key={f.label} className={`admin-fact ${f.tone ?? ''}`} href={f.href}><span className="tile-icon" aria-hidden="true"><Icon name={f.icon} size={16} /></span><span><span className="kpi-label">{f.label}</span><strong>{f.value}</strong><small>{f.sub}</small></span></a>)}
       </section>
-      <div className="admin-areas">
-        {ADMIN_AREAS.map((g) => (
-          <section key={g.group} className="emp-surface">
-            <div className="section-title"><h2>{g.group}</h2></div>
-            <ul className="admin-links">
-              {g.items.filter((i) => i.key !== 'overview').map((i) => <li key={i.key}><a href={i.href}><span className="hr-icon" aria-hidden="true"><Icon name={i.icon} size={16} /></span><span><strong>{i.label}</strong><small>{i.blurb}</small></span><Icon name="chevron" size={16} /></a></li>)}
-            </ul>
-          </section>
-        ))}
+      <div className="admin-overview-grid">
+        <div className="admin-areas">
+          {ADMIN_AREAS.map((g) => (
+            <section key={g.group} className="emp-surface">
+              <div className="section-title"><h2>{g.group}</h2></div>
+              <ul className="admin-links">
+                {g.items.filter((i) => i.key !== 'overview').map((i) => <li key={i.key}><a href={i.href}><span className="gloss-tile sm slate" aria-hidden="true"><Icon name={i.icon} size={16} /></span><span><strong>{i.label}</strong><small>{i.blurb}</small></span><Icon name="chevron" size={16} /></a></li>)}
+              </ul>
+            </section>
+          ))}
+        </div>
+        <section className="emp-surface admin-recent" aria-labelledby="recent-h">
+          <div className="section-title"><h2 id="recent-h">Recent audit activity</h2><a href="#/admin/audit">View all →</a></div>
+          {!audit ? <div className="kb-skeleton" aria-hidden="true">{[1, 2, 3, 4].map((i) => <div key={i} className="sk-row" />)}</div> : audit.items.length ? (
+            <ol className="ops-timeline admin-timeline">
+              {audit.items.map((e) => (
+                <li key={e.id}>
+                  <time dateTime={e.createdAt}>{new Date(e.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })}</time>
+                  <span className="tl-mark" aria-hidden="true" />
+                  <span className="tl-body"><strong>{e.action.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}</strong><span className="tl-detail">{e.detail}</span><small>{e.actor ? `by ${e.actor.name}` : 'system'} · {new Date(e.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</small></span>
+                </li>
+              ))}
+            </ol>
+          ) : <p className="muted t-sm">No administrative actions recorded yet.</p>}
+          <p className="muted fine">{audit ? `${audit.total.toLocaleString()} records in the log` : ''}</p>
+        </section>
       </div>
     </AdminLayout>
   );
@@ -57,6 +74,15 @@ export function WorkflowPage() {
         </ul>
       </SettingsSection>
       <SettingsSection id="wf-status" title="Statuses and transitions" description="What a ticket can move to from each status. Support roles change status from the ticket workspace; requesters can reopen resolved work. The clock pauses while a ticket waits on its requester.">
+        <ol className="lifecycle-flow" aria-label="Ticket lifecycle, read only">
+          {statuses.map((st, i) => (
+            <li key={st} className={`lf-${st.toLowerCase()}`}>
+              <span className="lf-step"><span className="lf-num" aria-hidden="true">{i + 1}</span><span className="lf-body"><strong>{labels[st]}</strong><small>{st === 'OPEN' ? 'Ticket is created and triaged' : st === 'IN_PROGRESS' ? 'Assigned and being worked on' : st === 'WAITING_FOR_USER' ? 'Waiting for the requester · clock paused' : st === 'RESOLVED' ? 'Fixed · requester can reopen or rate' : 'Closed · clock stopped'}</small></span></span>
+              {i < statuses.length - 1 && <span className="lf-arrow" aria-hidden="true"><Icon name="arrow" size={14} /></span>}
+            </li>
+          ))}
+        </ol>
+        <p className="muted fine wf-readonly"><Icon name="lock" size={12} /> Read only — the lifecycle and its transitions are fixed in this release and enforced by the API.</p>
         <div className="table-scroll">
           <table className="si-table workflow-table">
             <thead><tr><th scope="col">From</th><th scope="col">Can move to</th><th scope="col">SLA clock</th></tr></thead>

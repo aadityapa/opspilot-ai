@@ -58,7 +58,8 @@ test('home, catalog request with a dynamic form, and the approval round trip', a
   const card = page.locator('.approval-card').filter({ hasText: 'New laptop' }).first();
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Review' }).click();
-  const review = page.getByRole('dialog', { name: 'Review request' });
+  // On a desktop viewport the review is a pane beside the queue; on a phone it is a dialog.
+  const review = page.getByRole('region', { name: 'Review request' }).or(page.getByRole('dialog', { name: 'Review request' }));
   await expect(review.getByText('Business justification')).toBeVisible();
   await review.getByLabel('Note').fill('Approved for the platform team');
   await review.getByRole('button', { name: 'Approve', exact: true }).click();

@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import QRCode from 'qrcode';
+import { Icon } from './ui/icons';
+import { Avatar } from './ui';
 import { api, setCsrf } from './api';
 import { Pending, useRecord, when, type Act } from './operations';
-import type { CurrentUser } from '../shared/model';
+import { labels, type CurrentUser } from '../shared/model';
 
 /** What the server tells a client about where its session stands. */
 export interface AuthState {
@@ -146,15 +148,33 @@ function browserOf(agent: string | null) {
   return agent.split(' ')[0].slice(0, 40);
 }
 
-export function AccountPage({ user, act, busy, refresh, mfaEnabled, onMfaChange }: { user: CurrentUser; act: Act; busy: boolean; refresh: number; mfaEnabled: boolean; onMfaChange: (enabled: boolean) => void }) {
+export function AccountPage({ user, act, busy, refresh, mfaEnabled, onMfaChange, dark, onTheme }: { user: CurrentUser; act: Act; busy: boolean; refresh: number; mfaEnabled: boolean; onMfaChange: (enabled: boolean) => void; dark: boolean; onTheme: (dark: boolean) => void }) {
   const [enrolling, setEnrolling] = useState(false);
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
   const { data: sessions, error } = useRecord<SessionRow[]>('/auth/sessions', refresh);
   return (
     <>
-      <div className="page-heading"><div><p className="eyebrow">YOUR ACCOUNT</p><h1>{user.name}</h1><p className="muted">{user.email}</p></div></div>
-      <div className="detail-grid">
-        <div>
+      <div className="page-heading"><div><p className="eyebrow">YOUR ACCOUNT</p><h1>Account &amp; security</h1><p className="muted">Your profile, preferences and the protections on your sign-in.</p></div></div>
+      <div className="account-grid">
+        <div className="account-col">
+          <section className="panel account-profile">
+            <div className="account-identity"><Avatar name={user.name} size={56} /><div><h2>{user.name}</h2><p className="muted">{user.email}</p><span className="req-status neutral"><i />{labels[user.role]}</span></div><a className="btn btn-sm" href={`#/people/${user.id}`}>View profile</a></div>
+            <p className="muted fine">Title, department and manager live in the People directory and are maintained by an administrator.</p>
+          </section>
+          <section className="panel">
+            <h2>App preferences</h2>
+            <div className="pref-row">
+              <div><strong>Theme</strong><small className="muted block">Kept in this browser.</small></div>
+              <div className="seg" role="group" aria-label="Theme">
+                <button type="button" aria-pressed={dark} className={dark ? 'active' : ''} onClick={() => onTheme(true)}><Icon name="moon" size={14} />Dark</button>
+                <button type="button" aria-pressed={!dark} className={!dark ? 'active' : ''} onClick={() => onTheme(false)}><Icon name="sun" size={14} />Light</button>
+              </div>
+            </div>
+            <div className="pref-row">
+              <div><strong>Notifications</strong><small className="muted block">What you want to hear about, in-app and by e-mail.</small></div>
+              <a className="btn btn-sm" href="#/notifications">Notification settings</a>
+            </div>
+          </section>
           <section className="panel">
             <h2>Two-factor authentication</h2>
             {mfaEnabled ? (
@@ -189,7 +209,7 @@ export function AccountPage({ user, act, busy, refresh, mfaEnabled, onMfaChange 
             <PasswordChangeForm busy={busy} act={act} />
           </section>
         </div>
-        <div>
+        <div className="account-col">
           <section className="panel">
             <h2>Where you are signed in</h2>
             {!sessions ? <Pending error={error} /> : (

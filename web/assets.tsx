@@ -4,6 +4,7 @@ import { useRecord, when, type Act } from './operations';
 import { assetStatuses, assetTypes } from '../shared/model';
 import { labels, type Asset, type AssetSummary, type CurrentUser, type Department, type Person, type Profile } from '../shared/model';
 import { Icon } from './ui/icons';
+import { DeviceArt } from './ui/art';
 import { Avatar, EmptyState, ErrorState, Pager, fmtAgo, fmtCalendarDay, fmtDay, ticketKey } from './ui';
 import { StatusMark } from './ui/marks';
 import { rememberDeskReturn } from './nav-state';
@@ -148,10 +149,13 @@ function Inventory({ user, refresh, query }: { user: CurrentUser; refresh: numbe
                 {data.items.map((a) => (
                   <tr key={a.id}>
                     <td>
-                      <a className="asset-cell" href={`#/assets/${a.id}`}>
-                        <span className="mono-id">{a.tag}</span>
-                        <strong>{a.model}</strong>
-                        <small>{label(a.type)} · {a.manufacturer}</small>
+                      <a className="asset-cell with-art" href={`#/assets/${a.id}`}>
+                        <DeviceArt type={a.type} size={56} className="asset-thumb" />
+                        <span className="asset-cell-text">
+                          <span className="mono-id">{a.tag}</span>
+                          <strong>{a.model}</strong>
+                          <small>{label(a.type)} · {a.manufacturer}</small>
+                        </span>
                       </a>
                     </td>
                     <td className="t-sm">{label(a.type)}</td>
@@ -211,11 +215,14 @@ function AssetDetail({ id, user, act, busy, refresh }: { id: string; user: Curre
   return (
     <div className="emp asset-detail">
       <a className="back-link" href="#/assets"><Icon name="arrowLeft" size={14} />Asset inventory</a>
-      <header className="req-head">
-        <div>
-          <p className="eyebrow"><span className="mono-id">{a.tag}</span> · {label(a.type)}</p>
-          <h1>{a.model}</h1>
-          <p className="muted">{a.manufacturer}{a.owner ? <> · assigned to <a href={`#/people/${a.owner.id}`}>{a.owner.name}</a></> : ' · not assigned'}</p>
+      <header className="req-head asset-head">
+        <div className="asset-head-main">
+          <div className="asset-hero-art" aria-hidden="true"><DeviceArt type={a.type} size={168} /></div>
+          <div>
+            <p className="eyebrow"><span className="mono-id">{a.tag}</span> · {label(a.type)}</p>
+            <h1>{a.model}</h1>
+            <p className="muted">{a.manufacturer}{a.owner ? <> · assigned to <a href={`#/people/${a.owner.id}`}>{a.owner.name}</a></> : ' · not assigned'}</p>
+          </div>
         </div>
         <div className="page-actions">
           <HealthMark a={a} />
@@ -267,6 +274,7 @@ function AssetDetail({ id, user, act, busy, refresh }: { id: string; user: Curre
         </div>
 
         <aside className="req-side">
+          <WarrantyCard a={a} />
           <section className="emp-surface">
             <div className="section-title"><h2>Assigned to</h2></div>
             {a.owner ? (
@@ -308,6 +316,25 @@ function AssetDetail({ id, user, act, busy, refresh }: { id: string; user: Curre
         </aside>
       </div>
     </div>
+  );
+}
+
+/** Warranty, read from the two recorded dates. When only the expiry is known the bar is omitted rather than guessed. */
+function WarrantyCard({ a }: { a: AssetFull }) {
+  if (!a.warrantyExpiry) return null;
+  const end = new Date(a.warrantyExpiry).getTime(), now = Date.now();
+  const start = a.purchaseDate ? new Date(a.purchaseDate).getTime() : null;
+  const daysLeft = Math.ceil((end - now) / 86400000);
+  const pct = start && end > start ? Math.max(0, Math.min(100, Math.round(((now - start) / (end - start)) * 100))) : null;
+  const tone = daysLeft < 0 ? 'crit' : daysLeft <= 90 ? 'warn' : 'ok';
+  return (
+    <section className={`emp-surface warranty-card ${tone}`} aria-labelledby="warranty-h">
+      <div className="section-title"><h2 id="warranty-h">Warranty</h2><span className={`req-status ${tone}`}><i />{daysLeft < 0 ? 'Expired' : daysLeft <= 90 ? 'Expiring soon' : 'Active'}</span></div>
+      <p className="warranty-dates">{a.purchaseDate ? `${fmtCalendarDay(a.purchaseDate)} – ` : ''}{fmtCalendarDay(a.warrantyExpiry)}</p>
+      <strong className="warranty-left">{daysLeft < 0 ? `Expired ${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? '' : 's'} ago` : `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining`}</strong>
+      {pct !== null && <div className="warranty-bar" role="img" aria-label={`${pct}% of the warranty period elapsed`}><i style={{ width: `${pct}%` }} /><span>{pct}%</span></div>}
+      {pct === null && <p className="muted fine">No purchase date is recorded, so the elapsed share is not shown.</p>}
+    </section>
   );
 }
 

@@ -122,14 +122,18 @@ test('SLA state is visible on the ticket page and on the dashboard', async ({ pa
   await expect(page.getByText('Linked asset: LAP-0001')).toBeVisible();
 
   await page.getByRole('link', { name: 'Command Center', exact: true }).click();
-  // The command center: pulse, health strip, attention feed and SLA module, all from /api/operations/summary.
+  // The command center: primary measures, the facts strip, urgent queue, attention feed and SLA module, all from /api/operations/summary.
   await expect(page.getByRole('heading', { name: 'SLA performance' })).toBeVisible();
-  const pulse = page.getByRole('region', { name: 'Service operations pulse' });
-  await expect(pulse.getByText('SLA breached', { exact: true })).toBeVisible();
-  await expect(pulse.getByText('SLA at risk', { exact: true })).toBeVisible();
+  const kpis = page.getByRole('region', { name: 'Primary measures' });
+  await expect(kpis.getByText('SLA attention', { exact: true })).toBeVisible();
+  await expect(kpis.getByText('SLA compliance', { exact: true })).toBeVisible();
+  const facts = page.getByRole('region', { name: 'Secondary measures' }).or(page.locator('.facts-strip'));
+  await expect(facts.getByText('Unassigned', { exact: true })).toBeVisible();
+  await expect(facts.getByText('Net backlog', { exact: true })).toBeVisible();
   await expect(page.getByRole('img', { name: /Operational health of active tickets/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Needs your attention' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Critical & at-risk work' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Urgent attention' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Team capacity' })).toBeVisible();
   // The dashboard filters live in the URL and re-scope the summary.
   await page.getByLabel('Time range').selectOption('14');
   await expect(page).toHaveURL(/days=14/);
@@ -176,7 +180,7 @@ test('the resource layer connects: ticket → person → department → asset �
   await page.getByLabel('Search tickets').fill('VPN disconnects during video calls');
   await page.getByRole('link', { name: /VPN disconnects during video calls/ }).first().click();
   await expect(page.getByRole('heading', { name: 'VPN disconnects during video calls', level: 1 })).toBeVisible();
-  await page.getByRole('complementary', { name: 'Ticket context' }).getByRole('link', { name: 'Maya Chen' }).first().click();
+  await page.getByRole('complementary', { name: 'Ticket details' }).getByRole('link', { name: 'Maya Chen' }).first().click();
   await expect(page.getByRole('heading', { name: 'Maya Chen', level: 1 })).toBeVisible();
 
   // Profile → department, and back to the profile.
@@ -232,12 +236,15 @@ test('an administrator publishes an article and edits SLA policy', async ({ page
   await page.getByRole('link', { name: 'Administration', exact: true }).click();
   await page.getByRole('navigation', { name: 'Administration sections' }).getByRole('link', { name: 'Service levels', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'First-response and resolution targets' })).toBeVisible();
-  const urgentResponse = page.getByLabel('Urgent first response minutes');
+  // The policy list on the left selects a priority; the pane on the right edits it.
+  await page.getByRole('button', { name: 'Edit Urgent targets' }).click();
+  const pane = page.getByRole('form', { name: 'Edit Urgent policy' });
+  const urgentResponse = pane.getByLabel('Urgent first response minutes');
   await urgentResponse.fill('20');
-  await page.getByRole('row').filter({ hasText: 'Urgent' }).getByRole('button', { name: 'Save' }).click();
+  await pane.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByText('Urgent targets saved.', { exact: true })).toBeVisible();
-  await urgentResponse.fill('15');
-  await page.getByRole('row').filter({ hasText: 'Urgent' }).getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('form', { name: 'Edit Urgent policy' }).getByLabel('Urgent first response minutes').fill('15');
+  await page.getByRole('form', { name: 'Edit Urgent policy' }).getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByText('Urgent targets saved.', { exact: true })).toBeVisible();
 
   await page.getByRole('navigation', { name: 'Administration sections' }).getByRole('link', { name: 'Audit log' }).click();
@@ -251,7 +258,7 @@ test('an employee cannot reach administrator settings by URL', async ({ page }) 
   await page.goto('/#/settings/sla');
   await expect(page.getByRole('heading', { name: /You don’t have access to this area/ })).toBeVisible();
   await page.goto('/#/knowledge/new');
-  await expect(page.getByRole('alert')).toContainText('Administrator role required');
+  await expect(page.getByRole('alert')).toContainText('Only administrators write knowledge articles');
 });
 
 test('service intelligence, reports and the administration control plane', async ({ page }) => {
